@@ -1,18 +1,4 @@
 import type { Preview } from '@storybook/vue3-vite'
-import { withThemeByDataAttribute } from '@storybook/addon-themes'
-import { setup } from '@storybook/vue3'
-
-import '../src/style.css'
-import Toaster from '../src/components/Toaster.vue'
-import { h } from 'vue'
-
-// Mock router-link for Storybook
-setup((app) => {
-  app.component('router-link', {
-    props: ['to'],
-    template: '<a :href="to"><slot /></a>'
-  })
-})
 
 const preview: Preview = {
   parameters: {
@@ -22,43 +8,14 @@ const preview: Preview = {
         date: /Date$/i
       }
     },
-    backgrounds: {
-      default: 'light',
-      values: [
-        {
-          name: 'light',
-          value: '#ffffff'
-        },
-        {
-          name: 'dark',
-          value: '#1a1a1a'
-        }
-      ]
+
+    a11y: {
+      // 'todo' - show a11y violations in the test UI only
+      // 'error' - fail CI on a11y violations
+      // 'off' - skip a11y checks entirely
+      test: 'todo'
     }
-  },
-  decorators: [
-    withThemeByDataAttribute({
-      themes: {
-        light: 'light',
-        dark: 'dark'
-      },
-      defaultTheme: 'light',
-      attributeName: 'data-theme'
-    }),
-    (story, context) => {
-      // Sync background with theme
-      const theme = context.globals.theme || 'light'
-      context.globals.backgrounds.value = theme
-      console.log({ context })
-      return story()
-    },
-    // Global Toaster for all stories
-    (story) =>
-      h('div', [
-        h(story()),
-        h(Toaster)
-      ])
-  ]
+  }
 }
 
 export default preview
