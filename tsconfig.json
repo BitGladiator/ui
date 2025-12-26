@@ -33,22 +33,25 @@
     /* Library mode */
     "declaration": true,
     "declarationDir": "./dist",
-    "emitDeclarationOnly": true
+    "emitDeclarationOnly": true,
+    "types": [
+      "node",
+      "vite/client",
+      "@storybook/vue3"
+    ]
   },
   "include": [
     "src/**/*.ts",
     "src/**/*.tsx",
     "src/**/*.vue",
     "src/themes/index.ts",
-    "src/types/global.d.ts"
+    "src/types/global.d.ts",
+    "src/stories/**/*",
+    ".storybook/**/*"
   ],
   "exclude": [
     "node_modules",
     "dist",
-    "src/**/*.stories.ts",
-    "src/**/*.stories.tsx",
-    "src/stories/**/*",
-    ".storybook"
   ],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

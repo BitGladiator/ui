@@ -1,276 +1,654 @@
 <script setup lang="ts">
-  import { computed, ref, onMounted, onUnmounted, defineComponent } from 'vue'
-  import { Icon } from '@iconify/vue'
-  import theme from '@/themes/navigation-menu'
-  import type { NavigationItem } from '@/config/navigation'
-  
-  /* -------------------------------------------------------------------------- */
-  /*                                   Props                                    */
-  /* -------------------------------------------------------------------------- */
-  
-  export interface NavigationMenuProps {
-    menuItems?: NavigationItem[]
-    mode?: 'vertical' | 'horizontal'
-    collapsed?: boolean
-    collapsible?: boolean
-    class?: string
-    ui?: Record<string, any>
-  }
-  
-  const props = withDefaults(defineProps<NavigationMenuProps>(), {
-    mode: 'vertical',
-    collapsed: false,
-    collapsible: true
-  })
-  
-  const emit = defineEmits<{
-    'update:collapsed': [value: boolean]
-    'select': [item: NavigationItem]
-    'close-drawer': []
-  }>()
-  
-  /* -------------------------------------------------------------------------- */
-  /*                             Responsive handling                              */
-  /* -------------------------------------------------------------------------- */
-  
-  const isMobile = ref(false)
-  const isTablet = ref(false)
-  const isDesktop = ref(false)
-  
-  const updateResponsiveState = () => {
-    const width = window.innerWidth
-    isMobile.value = width < 768
-    isTablet.value = width >= 768 && width < 1024
-    isDesktop.value = width >= 1024
-  
-    if (!isMobile.value) {
-      mobileDrawerOpen.value = false
-    }
-  }
-  
-  onMounted(() => {
-    updateResponsiveState()
-    window.addEventListener('resize', updateResponsiveState)
-  })
-  
-  onUnmounted(() => {
-    window.removeEventListener('resize', updateResponsiveState)
-  })
-  
-  /* -------------------------------------------------------------------------- */
-  /*                                 UI State                                   */
-  /* -------------------------------------------------------------------------- */
-  
-  const collapsed = computed({
-    get: () => props.collapsed,
-    set: (val: boolean) => emit('update:collapsed', val)
-  })
-  
-  const mobileDrawerOpen = ref(false)
-  
-  const toggleSidebar = () => {
-    if (isMobile.value) {
-      mobileDrawerOpen.value = !mobileDrawerOpen.value
-    } else if (props.collapsible) {
-      collapsed.value = !collapsed.value
-    }
-  }
-  
-  const closeMobileDrawer = () => {
+import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { Icon } from '@iconify/vue'
+import theme from '@/themes/navigation-menu'
+import type { NavigationItem } from '@/config/navigation'
+
+/* -------------------------------------------------------------------------- */
+/*                                   Props                                    */
+/* -------------------------------------------------------------------------- */
+
+export interface NavigationMenuProps {
+  menuItems?: NavigationItem[]
+  mode?: 'vertical' | 'horizontal'
+  collapsed?: boolean
+  collapsible?: boolean
+  class?: string
+  ui?: Record<string, any>
+}
+
+const props = withDefaults(defineProps<NavigationMenuProps>(), {
+  mode: 'vertical',
+  collapsed: false,
+  collapsible: true,
+  menuItems: () => []
+})
+
+const emit = defineEmits<{
+  'update:collapsed': [value: boolean]
+  'select': [item: NavigationItem]
+}>()
+
+/* -------------------------------------------------------------------------- */
+/*                             Responsive handling                             */
+/* -------------------------------------------------------------------------- */
+
+const isMobile = ref(false)
+const isTablet = ref(false)
+const isDesktop = ref(false)
+
+const updateResponsiveState = () => {
+  const width = window.innerWidth
+  isMobile.value = width < 768
+  isTablet.value = width >= 768 && width < 1024
+  isDesktop.value = width >= 1024
+
+  if (!isMobile.value) {
     mobileDrawerOpen.value = false
   }
-  
-  const ui = computed(() => theme({ orientation: props.mode }))
-  
-  const sidebarWidth = computed(() => {
-    if (isMobile.value) return '100vw'
-    if (isTablet.value) return collapsed.value ? '5rem' : '12rem'
-    return collapsed.value ? '4rem' : '16rem'
-  })
-  
-  /* -------------------------------------------------------------------------- */
-  /*                          Navigation Menu Item                               */
-  /* -------------------------------------------------------------------------- */
-  
-  const NavigationMenuItem = defineComponent({
-    name: 'NavigationMenuItem',
-    props: {
-      item: { type: Object as () => NavigationItem, required: true },
-      ui: { type: Object, required: true },
-      collapsed: { type: Boolean, required: true },
-      level: { type: Number, default: 0 },
-      isMobile: { type: Boolean, required: true },
-      mode: { type: String as () => 'vertical' | 'horizontal', default: 'vertical' }
-    },
-    emits: ['select', 'close-drawer'],
-    setup(props, { emit }) {
-      const expanded = ref(false)
-  
-      const handleClick = (e: Event) => {
-        if (props.item.disabled) {
-          e.preventDefault()
-          return
-        }
-  
-        if (props.item.children) {
-          expanded.value = !expanded.value
-        } else {
-          props.item.onClick?.(e)
-          if (props.isMobile) emit('close-drawer')
-          emit('select', props.item)
-        }
-      }
-  
-      return { expanded, handleClick }
-    },
-    template: `
-      <li :class="[ui.item, level > 0 && mode === 'vertical' ? 'ml-4' : '']">
-        <button
-          v-if="item.children"
-          @click="handleClick"
-          :class="ui.trigger"
-          :aria-expanded="expanded"
-        >
-          <Icon v-if="item.icon" :icon="item.icon" :class="ui.triggerIcon" />
-          <span v-if="!collapsed || isMobile || mode === 'horizontal'">
-            {{ item.label }}
-          </span>
-          <Icon
-            v-if="mode === 'vertical'"
-            icon="solar:alt-arrow-down-linear"
-            :class="[ui.triggerCaret, { 'rotate-180': expanded }]"
-          />
-        </button>
-  
-        <router-link
-          v-else-if="item.to"
-          :to="item.to"
-          :class="ui.link"
-          @click="handleClick"
-        >
-          <Icon v-if="item.icon" :icon="item.icon" :class="ui.linkIcon" />
-          <span v-if="!collapsed || isMobile || mode === 'horizontal'">
-            {{ item.label }}
-          </span>
-        </router-link>
-  
-        <Transition
-          v-if="item.children"
-          enter-active-class="transition-all duration-200"
-          leave-active-class="transition-all duration-200"
-        >
-          <ul v-if="expanded" :class="[ui.list, 'flex flex-col']">
-            <NavigationMenuItem
-              v-for="child in item.children"
-              :key="child.label"
-              :item="child"
-              :ui="ui"
-              :collapsed="collapsed"
-              :level="level + 1"
-              :isMobile="isMobile"
-              :mode="mode"
-              @select="$emit('select', $event)"
-              @close-drawer="$emit('close-drawer')"
-            />
-          </ul>
-        </Transition>
-      </li>
-    `
-  })
-  </script>
-  
-  <template>
-    <!-- Vertical Sidebar -->
+}
+
+onMounted(() => {
+  updateResponsiveState()
+  window.addEventListener('resize', updateResponsiveState)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', updateResponsiveState)
+})
+
+/* -------------------------------------------------------------------------- */
+/*                                 UI State                                   */
+/* -------------------------------------------------------------------------- */
+
+const internalCollapsed = ref(props.collapsed)
+const mobileDrawerOpen = ref(false)
+
+const collapsed = computed({
+  get: () => isMobile.value ? false : internalCollapsed.value,
+  set: (val: boolean) => {
+    internalCollapsed.value = val
+    emit('update:collapsed', val)
+  }
+})
+
+const toggleSidebar = () => {
+  if (isMobile.value) {
+    mobileDrawerOpen.value = !mobileDrawerOpen.value
+  } else if (props.collapsible) {
+    collapsed.value = !collapsed.value
+  }
+}
+
+const closeMobileDrawer = () => {
+  mobileDrawerOpen.value = false
+}
+
+const ui = computed(() => theme({ orientation: props.mode }))
+
+const sidebarWidth = computed(() => {
+  if (isMobile.value) return '280px'
+  if (isTablet.value) return collapsed.value ? '80px' : '200px'
+  return collapsed.value ? '80px' : '256px'
+})
+
+/* -------------------------------------------------------------------------- */
+/*                          Navigation Menu Item                               */
+/* -------------------------------------------------------------------------- */
+
+const expandedItems = ref<Set<string>>(new Set())
+
+const toggleExpanded = (itemLabel: string) => {
+  if (expandedItems.value.has(itemLabel)) {
+    expandedItems.value.delete(itemLabel)
+  } else {
+    expandedItems.value.add(itemLabel)
+  }
+}
+
+const isExpanded = (itemLabel: string) => {
+  return expandedItems.value.has(itemLabel)
+}
+
+const handleItemClick = (item: NavigationItem, e: Event) => {
+  if (item.disabled) {
+    e.preventDefault()
+    return
+  }
+
+  if (item.children && item.children.length > 0) {
+    toggleExpanded(item.label)
+  } else {
+    item.onClick?.(e)
+    emit('select', item)
+    if (isMobile.value) {
+      closeMobileDrawer()
+    }
+  }
+}
+</script>
+
+<template>
+  <!-- Vertical Sidebar Mode -->
+  <template v-if="mode === 'vertical'">
+    <!-- Desktop/Tablet Sidebar -->
     <aside
-      v-if="mode === 'vertical'"
+      v-if="!isMobile"
       :class="[
-        'bg-surface border-r h-screen transition-all duration-300',
-        isMobile ? 'fixed inset-y-0 left-0 z-50 w-screen max-w-full' : 'relative',
-        isMobile && !mobileDrawerOpen ? '-translate-x-full' : 'translate-x-0'
+        'bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 h-screen transition-all duration-300 ease-in-out relative flex flex-col'
       ]"
       :style="{ width: sidebarWidth }"
     >
-      <header class="flex items-center justify-between p-4 border-b">
-        <h2 v-if="!collapsed || isMobile" class="font-semibold">Navigation</h2>
-        <button @click="toggleSidebar">
+      <header class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800 shrink-0">
+        <h2 v-if="!collapsed" class="font-semibold text-gray-900 dark:text-gray-100">Navigation</h2>
+        <button
+          @click="toggleSidebar"
+          class="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+          :aria-label="collapsed ? 'Expand sidebar' : 'Collapse sidebar'"
+        >
           <Icon
-            :icon="isMobile ? 'solar:close-linear' : 'solar:sidebar-minimalistic-linear'"
-            class="w-5 h-5"
+            :icon="collapsed ? 'solar:sidebar-code-linear' : 'solar:sidebar-minimalistic-linear'"
+            class="w-5 h-5 text-gray-600 dark:text-gray-400"
           />
         </button>
       </header>
-  
-      <nav class="p-2">
-        <ul :class="[ui.list, 'flex flex-col']">
-          <NavigationMenuItem
-            v-for="item in menuItems"
-            :key="item.label"
-            :item="item"
-            :ui="ui"
-            :collapsed="collapsed && !isMobile"
-            :isMobile="isMobile"
-            :mode="mode"
-            @select="$emit('select', $event)"
-            @close-drawer="closeMobileDrawer"
-          />
+
+      <nav class="flex-1 overflow-y-auto p-2">
+        <ul :class="[ui.list]">
+          <template v-for="item in menuItems" :key="item.label">
+            <li :class="ui.item">
+              <!-- Item with children -->
+              <button
+                v-if="item.children && item.children.length > 0"
+                @click="(e) => handleItemClick(item, e)"
+                :class="[
+                  ui.trigger,
+                  item.disabled && 'opacity-50 cursor-not-allowed'
+                ]"
+                :disabled="item.disabled"
+                :aria-expanded="isExpanded(item.label)"
+              >
+                <Icon v-if="item.icon" :icon="item.icon" :class="ui.triggerIcon" />
+                <span v-if="!collapsed" class="flex-1 text-left">{{ item.label }}</span>
+                <Icon
+                  v-if="!collapsed"
+                  icon="solar:alt-arrow-down-linear"
+                  :class="[
+                    ui.triggerCaret,
+                    isExpanded(item.label) && 'rotate-180'
+                  ]"
+                />
+              </button>
+
+              <!-- Item with router link -->
+              <router-link
+                v-else-if="item.to"
+                :to="item.to"
+                :class="[
+                  ui.link,
+                  item.disabled && 'opacity-50 cursor-not-allowed pointer-events-none'
+                ]"
+                @click="(e) => handleItemClick(item, e)"
+              >
+                <Icon v-if="item.icon" :icon="item.icon" :class="ui.linkIcon" />
+                <span v-if="!collapsed">{{ item.label }}</span>
+              </router-link>
+
+              <!-- Item with href -->
+              <a
+                v-else
+                :href="item.href || '#'"
+                :class="[
+                  ui.link,
+                  item.disabled && 'opacity-50 cursor-not-allowed pointer-events-none'
+                ]"
+                @click="(e) => handleItemClick(item, e)"
+              >
+                <Icon v-if="item.icon" :icon="item.icon" :class="ui.linkIcon" />
+                <span v-if="!collapsed">{{ item.label }}</span>
+              </a>
+
+              <!-- Children -->
+              <Transition
+                enter-active-class="transition-all duration-200 ease-out"
+                leave-active-class="transition-all duration-150 ease-in"
+                enter-from-class="opacity-0 -translate-y-1"
+                enter-to-class="opacity-100 translate-y-0"
+                leave-from-class="opacity-100 translate-y-0"
+                leave-to-class="opacity-0 -translate-y-1"
+              >
+                <ul
+                  v-if="item.children && item.children.length > 0 && isExpanded(item.label) && !collapsed"
+                  class="ml-4 mt-1 space-y-1"
+                >
+                  <li v-for="child in item.children" :key="child.label">
+                    <router-link
+                      v-if="child.to"
+                      :to="child.to"
+                      :class="[
+                        ui.link,
+                        'text-sm',
+                        child.disabled && 'opacity-50 cursor-not-allowed pointer-events-none'
+                      ]"
+                      @click="(e) => handleItemClick(child, e)"
+                    >
+                      <Icon v-if="child.icon" :icon="child.icon" :class="ui.linkIcon" />
+                      <span>{{ child.label }}</span>
+                    </router-link>
+                    <a
+                      v-else
+                      :href="child.href || '#'"
+                      :class="[
+                        ui.link,
+                        'text-sm',
+                        child.disabled && 'opacity-50 cursor-not-allowed pointer-events-none'
+                      ]"
+                      @click="(e) => handleItemClick(child, e)"
+                    >
+                      <Icon v-if="child.icon" :icon="child.icon" :class="ui.linkIcon" />
+                      <span>{{ child.label }}</span>
+                    </a>
+                  </li>
+                </ul>
+              </Transition>
+            </li>
+          </template>
         </ul>
       </nav>
     </aside>
-  
-    <!-- Horizontal Header -->
-    <nav
-      v-else
-      class="border-b px-4 py-2 flex items-center justify-between w-full min-h-[3.5rem]"
-    >
-      <ul class="hidden md:flex gap-2" :class="ui.list">
-        <NavigationMenuItem
-          v-for="item in menuItems"
-          :key="item.label"
-          :item="item"
-          :ui="ui"
-          :collapsed="false"
-          :isMobile="false"
-          :mode="mode"
-        />
-      </ul>
-  
-      <button class="md:hidden" @click="toggleSidebar">
-        <Icon icon="solar:hamburger-menu-linear" class="w-5 h-5" />
-      </button>
-    </nav>
-  
+
     <!-- Mobile Overlay -->
-    <div
-      v-if="isMobile && mobileDrawerOpen"
-      class="fixed inset-0 bg-black/50 z-40"
-      @click="closeMobileDrawer"
-    />
-  
-    <!-- Mobile Drawer (Horizontal) -->
-    <aside
-      v-if="mode === 'horizontal' && isMobile && mobileDrawerOpen"
-      class="fixed inset-y-0 left-0 w-full bg-surface z-50"
+    <Transition
+      enter-active-class="transition-opacity duration-300"
+      leave-active-class="transition-opacity duration-200"
+      enter-from-class="opacity-0"
+      enter-to-class="opacity-100"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
     >
-      <header class="p-4 flex justify-between border-b">
-        <span class="font-semibold">Menu</span>
-        <button @click="closeMobileDrawer">
-          <Icon icon="solar:close-linear" />
-        </button>
-      </header>
-  
-      <nav class="p-2">
-        <ul :class="[ui.list, 'flex flex-col']">
-          <NavigationMenuItem
-            v-for="item in menuItems"
-            :key="item.label"
-            :item="item"
-            :ui="ui"
-            :collapsed="false"
-            :isMobile="true"
-            :mode="mode"
-            @close-drawer="closeMobileDrawer"
-          />
-        </ul>
-      </nav>
-    </aside>
-  </template>  
+      <div
+        v-if="isMobile && mobileDrawerOpen"
+        class="fixed inset-0 bg-black/50 z-40"
+        @click="closeMobileDrawer"
+      />
+    </Transition>
+
+    <!-- Mobile Drawer -->
+    <Transition
+      enter-active-class="transition-transform duration-300 ease-out"
+      leave-active-class="transition-transform duration-200 ease-in"
+      enter-from-class="-translate-x-full"
+      enter-to-class="translate-x-0"
+      leave-from-class="translate-x-0"
+      leave-to-class="-translate-x-full"
+    >
+      <aside
+        v-if="isMobile && mobileDrawerOpen"
+        class="fixed inset-y-0 left-0 z-50 bg-white dark:bg-gray-900 shadow-xl flex flex-col"
+        :style="{ width: sidebarWidth }"
+      >
+        <header class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800 shrink-0">
+          <h2 class="font-semibold text-gray-900 dark:text-gray-100">Navigation</h2>
+          <button
+            @click="closeMobileDrawer"
+            class="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+            aria-label="Close menu"
+          >
+            <Icon icon="solar:close-linear" class="w-5 h-5 text-gray-600 dark:text-gray-400" />
+          </button>
+        </header>
+
+        <nav class="flex-1 overflow-y-auto p-2">
+          <ul :class="[ui.list]">
+            <template v-for="item in menuItems" :key="item.label">
+              <li :class="ui.item">
+                <!-- Item with children -->
+                <button
+                  v-if="item.children && item.children.length > 0"
+                  @click="(e) => handleItemClick(item, e)"
+                  :class="[
+                    ui.trigger,
+                    item.disabled && 'opacity-50 cursor-not-allowed'
+                  ]"
+                  :disabled="item.disabled"
+                  :aria-expanded="isExpanded(item.label)"
+                >
+                  <Icon v-if="item.icon" :icon="item.icon" :class="ui.triggerIcon" />
+                  <span class="flex-1 text-left">{{ item.label }}</span>
+                  <Icon
+                    icon="solar:alt-arrow-down-linear"
+                    :class="[
+                      ui.triggerCaret,
+                      isExpanded(item.label) && 'rotate-180'
+                    ]"
+                  />
+                </button>
+
+                <!-- Item with router link -->
+                <router-link
+                  v-else-if="item.to"
+                  :to="item.to"
+                  :class="[
+                    ui.link,
+                    item.disabled && 'opacity-50 cursor-not-allowed pointer-events-none'
+                  ]"
+                  @click="(e) => handleItemClick(item, e)"
+                >
+                  <Icon v-if="item.icon" :icon="item.icon" :class="ui.linkIcon" />
+                  <span>{{ item.label }}</span>
+                </router-link>
+
+                <!-- Item with href -->
+                <a
+                  v-else
+                  :href="item.href || '#'"
+                  :class="[
+                    ui.link,
+                    item.disabled && 'opacity-50 cursor-not-allowed pointer-events-none'
+                  ]"
+                  @click="(e) => handleItemClick(item, e)"
+                >
+                  <Icon v-if="item.icon" :icon="item.icon" :class="ui.linkIcon" />
+                  <span>{{ item.label }}</span>
+                </a>
+
+                <!-- Children -->
+                <Transition
+                  enter-active-class="transition-all duration-200 ease-out"
+                  leave-active-class="transition-all duration-150 ease-in"
+                  enter-from-class="opacity-0 -translate-y-1"
+                  enter-to-class="opacity-100 translate-y-0"
+                  leave-from-class="opacity-100 translate-y-0"
+                  leave-to-class="opacity-0 -translate-y-1"
+                >
+                  <ul
+                    v-if="item.children && item.children.length > 0 && isExpanded(item.label)"
+                    class="ml-4 mt-1 space-y-1"
+                  >
+                    <li v-for="child in item.children" :key="child.label">
+                      <router-link
+                        v-if="child.to"
+                        :to="child.to"
+                        :class="[
+                          ui.link,
+                          'text-sm',
+                          child.disabled && 'opacity-50 cursor-not-allowed pointer-events-none'
+                        ]"
+                        @click="(e) => handleItemClick(child, e)"
+                      >
+                        <Icon v-if="child.icon" :icon="child.icon" :class="ui.linkIcon" />
+                        <span>{{ child.label }}</span>
+                      </router-link>
+                      <a
+                        v-else
+                        :href="child.href || '#'"
+                        :class="[
+                          ui.link,
+                          'text-sm',
+                          child.disabled && 'opacity-50 cursor-not-allowed pointer-events-none'
+                        ]"
+                        @click="(e) => handleItemClick(child, e)"
+                      >
+                        <Icon v-if="child.icon" :icon="child.icon" :class="ui.linkIcon" />
+                        <span>{{ child.label }}</span>
+                      </a>
+                    </li>
+                  </ul>
+                </Transition>
+              </li>
+            </template>
+          </ul>
+        </nav>
+      </aside>
+    </Transition>
+
+    <!-- Mobile Toggle Button (Fixed) -->
+    <button
+      v-if="isMobile"
+      @click="toggleSidebar"
+      class="fixed bottom-4 right-4 z-30 p-3 bg-primary text-white rounded-full shadow-lg hover:bg-primary/90 transition-colors"
+      aria-label="Toggle menu"
+    >
+      <Icon icon="solar:hamburger-menu-linear" class="w-6 h-6" />
+    </button>
+  </template>
+
+  <!-- Horizontal Header Mode -->
+  <nav
+    v-else
+    class="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 w-full"
+  >
+    <div class="px-4 py-3 flex items-center justify-between">
+      <!-- Desktop Menu -->
+      <ul class="hidden md:flex items-center gap-1">
+        <template v-for="item in menuItems" :key="item.label">
+          <li class="relative group">
+            <!-- Item with children (dropdown) -->
+            <button
+              v-if="item.children && item.children.length > 0"
+              :class="[
+                ui.trigger,
+                item.disabled && 'opacity-50 cursor-not-allowed'
+              ]"
+              :disabled="item.disabled"
+            >
+              <Icon v-if="item.icon" :icon="item.icon" :class="ui.triggerIcon" />
+              <span>{{ item.label }}</span>
+              <Icon icon="solar:alt-arrow-down-linear" class="w-4 h-4 ml-1" />
+            </button>
+
+            <!-- Item with router link -->
+            <router-link
+              v-else-if="item.to"
+              :to="item.to"
+              :class="[
+                ui.link,
+                item.disabled && 'opacity-50 cursor-not-allowed pointer-events-none'
+              ]"
+              @click="(e) => handleItemClick(item, e)"
+            >
+              <Icon v-if="item.icon" :icon="item.icon" :class="ui.linkIcon" />
+              <span>{{ item.label }}</span>
+            </router-link>
+
+            <!-- Item with href -->
+            <a
+              v-else
+              :href="item.href || '#'"
+              :class="[
+                ui.link,
+                item.disabled && 'opacity-50 cursor-not-allowed pointer-events-none'
+              ]"
+              @click="(e) => handleItemClick(item, e)"
+            >
+              <Icon v-if="item.icon" :icon="item.icon" :class="ui.linkIcon" />
+              <span>{{ item.label }}</span>
+            </a>
+
+            <!-- Dropdown menu -->
+            <div
+              v-if="item.children && item.children.length > 0"
+              class="absolute left-0 top-full mt-1 min-w-[200px] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50"
+            >
+              <ul class="py-1">
+                <li v-for="child in item.children" :key="child.label">
+                  <router-link
+                    v-if="child.to"
+                    :to="child.to"
+                    class="flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                    @click="(e) => handleItemClick(child, e)"
+                  >
+                    <Icon v-if="child.icon" :icon="child.icon" class="w-4 h-4" />
+                    <span>{{ child.label }}</span>
+                  </router-link>
+                  <a
+                    v-else
+                    :href="child.href || '#'"
+                    class="flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                    @click="(e) => handleItemClick(child, e)"
+                  >
+                    <Icon v-if="child.icon" :icon="child.icon" class="w-4 h-4" />
+                    <span>{{ child.label }}</span>
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </li>
+        </template>
+      </ul>
+
+      <!-- Mobile Menu Button -->
+      <button
+        class="md:hidden p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+        @click="toggleSidebar"
+        aria-label="Toggle menu"
+      >
+        <Icon icon="solar:hamburger-menu-linear" class="w-6 h-6" />
+      </button>
+    </div>
+
+    <!-- Mobile Overlay -->
+    <Transition
+      enter-active-class="transition-opacity duration-300"
+      leave-active-class="transition-opacity duration-200"
+      enter-from-class="opacity-0"
+      enter-to-class="opacity-100"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
+    >
+      <div
+        v-if="isMobile && mobileDrawerOpen"
+        class="fixed inset-0 bg-black/50 z-40"
+        @click="closeMobileDrawer"
+      />
+    </Transition>
+
+    <!-- Mobile Drawer for Horizontal Mode -->
+    <Transition
+      enter-active-class="transition-transform duration-300 ease-out"
+      leave-active-class="transition-transform duration-200 ease-in"
+      enter-from-class="-translate-x-full"
+      enter-to-class="translate-x-0"
+      leave-from-class="translate-x-0"
+      leave-to-class="-translate-x-full"
+    >
+      <aside
+        v-if="isMobile && mobileDrawerOpen"
+        class="fixed inset-y-0 left-0 z-50 w-[280px] bg-white dark:bg-gray-900 shadow-xl flex flex-col"
+      >
+        <header class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800 shrink-0">
+          <h2 class="font-semibold text-gray-900 dark:text-gray-100">Menu</h2>
+          <button
+            @click="closeMobileDrawer"
+            class="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+            aria-label="Close menu"
+          >
+            <Icon icon="solar:close-linear" class="w-5 h-5 text-gray-600 dark:text-gray-400" />
+          </button>
+        </header>
+
+        <nav class="flex-1 overflow-y-auto p-2">
+          <ul class="space-y-1">
+            <template v-for="item in menuItems" :key="item.label">
+              <li>
+                <!-- Item with children -->
+                <button
+                  v-if="item.children && item.children.length > 0"
+                  @click="(e) => handleItemClick(item, e)"
+                  :class="[
+                    ui.trigger,
+                    item.disabled && 'opacity-50 cursor-not-allowed'
+                  ]"
+                  :disabled="item.disabled"
+                  :aria-expanded="isExpanded(item.label)"
+                >
+                  <Icon v-if="item.icon" :icon="item.icon" :class="ui.triggerIcon" />
+                  <span class="flex-1 text-left">{{ item.label }}</span>
+                  <Icon
+                    icon="solar:alt-arrow-down-linear"
+                    :class="[
+                      ui.triggerCaret,
+                      isExpanded(item.label) && 'rotate-180'
+                    ]"
+                  />
+                </button>
+
+                <!-- Item with router link -->
+                <router-link
+                  v-else-if="item.to"
+                  :to="item.to"
+                  :class="[
+                    ui.link,
+                    item.disabled && 'opacity-50 cursor-not-allowed pointer-events-none'
+                  ]"
+                  @click="(e) => handleItemClick(item, e)"
+                >
+                  <Icon v-if="item.icon" :icon="item.icon" :class="ui.linkIcon" />
+                  <span>{{ item.label }}</span>
+                </router-link>
+
+                <!-- Item with href -->
+                <a
+                  v-else
+                  :href="item.href || '#'"
+                  :class="[
+                    ui.link,
+                    item.disabled && 'opacity-50 cursor-not-allowed pointer-events-none'
+                  ]"
+                  @click="(e) => handleItemClick(item, e)"
+                >
+                  <Icon v-if="item.icon" :icon="item.icon" :class="ui.linkIcon" />
+                  <span>{{ item.label }}</span>
+                </a>
+
+                <!-- Children -->
+                <Transition
+                  enter-active-class="transition-all duration-200 ease-out"
+                  leave-active-class="transition-all duration-150 ease-in"
+                  enter-from-class="opacity-0 -translate-y-1"
+                  enter-to-class="opacity-100 translate-y-0"
+                  leave-from-class="opacity-100 translate-y-0"
+                  leave-to-class="opacity-0 -translate-y-1"
+                >
+                  <ul
+                    v-if="item.children && item.children.length > 0 && isExpanded(item.label)"
+                    class="ml-4 mt-1 space-y-1"
+                  >
+                    <li v-for="child in item.children" :key="child.label">
+                      <router-link
+                        v-if="child.to"
+                        :to="child.to"
+                        :class="[
+                          ui.link,
+                          'text-sm',
+                          child.disabled && 'opacity-50 cursor-not-allowed pointer-events-none'
+                        ]"
+                        @click="(e) => handleItemClick(child, e)"
+                      >
+                        <Icon v-if="child.icon" :icon="child.icon" :class="ui.linkIcon" />
+                        <span>{{ child.label }}</span>
+                      </router-link>
+                      <a
+                        v-else
+                        :href="child.href || '#'"
+                        :class="[
+                          ui.link,
+                          'text-sm',
+                          child.disabled && 'opacity-50 cursor-not-allowed pointer-events-none'
+                        ]"
+                        @click="(e) => handleItemClick(child, e)"
+                      >
+                        <Icon v-if="child.icon" :icon="child.icon" :class="ui.linkIcon" />
+                        <span>{{ child.label }}</span>
+                      </a>
+                    </li>
+                  </ul>
+                </Transition>
+              </li>
+            </template>
+          </ul>
+        </nav>
+      </aside>
+    </Transition>
+  </nav>
+</template>
