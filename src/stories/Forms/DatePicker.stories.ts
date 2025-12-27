@@ -1,10 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/vue3'
 import { ref } from 'vue'
-import { CalendarDate, type DateValue } from '@internationalized/date'
 import DatePicker from '../../components/DatePicker.vue'
 
 const meta = {
   title: 'Forms/DatePicker',
+  component: DatePicker,
   tags: ['autodocs'],
   argTypes: {
     size: {
@@ -29,18 +29,62 @@ const meta = {
     loading: {
       control: 'boolean',
       description: 'Show loading spinner'
+    },
+    range: {
+      control: 'boolean',
+      description: 'Enable range selection'
+    },
+    leadingIcon: {
+      control: 'text',
+      description: 'Leading icon name'
+    },
+    trailingIcon: {
+      control: 'text',
+      description: 'Trailing icon name'
+    },
+    separatorIcon: {
+      control: 'text',
+      description: 'Separator icon for range mode'
+    },
+    placeholder: {
+      control: 'text',
+      description: 'Placeholder text'
+    },
+    minValue: {
+      control: 'date',
+      description: 'Minimum selectable date'
+    },
+    maxValue: {
+      control: 'date',
+      description: 'Maximum selectable date'
     }
+  },
+  args: {
+    size: 'md',
+    variant: 'outline',
+    color: 'primary',
+    placeholder: 'Select date...',
+    disabled: false,
+    loading: false,
+    range: false,
+    trailingIcon: 'solar:calendar-linear'
   }
 } satisfies Meta<typeof DatePicker>
 
 export default meta
 type Story = StoryObj<typeof meta>
 
+// Helper function to create dates
+const createDate = (year: number, month: number, day: number): Date => {
+  return new Date(year, month - 1, day)
+}
+
 export const Default: Story = {
   render: (args) => ({
     components: { DatePicker },
     setup() {
-      const date = ref(new CalendarDate(2024, 12, 18))
+      // Use Date objects, not CalendarDate
+      const date = ref<Date | null>(createDate(2024, 12, 18))
       return { args, date }
     },
     template: '<DatePicker v-model="date" v-bind="args" />'
@@ -52,7 +96,7 @@ export const Empty: Story = {
   render: () => ({
     components: { DatePicker },
     setup() {
-      const date = ref(undefined)
+      const date = ref<Date | null>(null)
       return { date }
     },
     template: '<DatePicker v-model="date" />'
@@ -63,7 +107,7 @@ export const WithDefaultValue: Story = {
   render: () => ({
     components: { DatePicker },
     setup() {
-      const defaultValue = new CalendarDate(2024, 12, 25)
+      const defaultValue = createDate(2024, 12, 25)
       return { defaultValue }
     },
     template: '<DatePicker :default-value="defaultValue" />'
@@ -74,7 +118,7 @@ export const Sizes: Story = {
   render: () => ({
     components: { DatePicker },
     setup() {
-      const date = ref(new CalendarDate(2024, 12, 18))
+      const date = ref<Date | null>(createDate(2024, 12, 18))
       return { date }
     },
     template: `
@@ -100,7 +144,7 @@ export const Variants: Story = {
   render: () => ({
     components: { DatePicker },
     setup() {
-      const date = ref(new CalendarDate(2024, 12, 18))
+      const date = ref<Date | null>(createDate(2024, 12, 18))
       return { date }
     },
     template: `
@@ -134,7 +178,7 @@ export const Colors: Story = {
   render: () => ({
     components: { DatePicker },
     setup() {
-      const date = ref(new CalendarDate(2024, 12, 18))
+      const date = ref<Date | null>(createDate(2024, 12, 18))
       return { date }
     },
     template: `
@@ -168,14 +212,14 @@ export const WithIcons: Story = {
   render: () => ({
     components: { DatePicker },
     setup() {
-      const date = ref(new CalendarDate(2024, 12, 18))
+      const date = ref<Date | null>(createDate(2024, 12, 18))
       return { date }
     },
     template: `
       <div class="space-y-4">
         <div>
           <p class="text-xs text-muted-foreground mb-2">With leading icon</p>
-          <DatePicker v-model="date" leading-icon="solar:calendar-linear" />
+          <DatePicker v-model="date" leading-icon="solar:calendar-bold" />
         </div>
         <div>
           <p class="text-xs text-muted-foreground mb-2">With trailing icon (default)</p>
@@ -195,8 +239,8 @@ export const Range: Story = {
     components: { DatePicker },
     setup() {
       const dateRange = ref({
-        start: new CalendarDate(2024, 12, 10),
-        end: new CalendarDate(2024, 12, 20)
+        start: createDate(2024, 12, 10),
+        end: createDate(2024, 12, 20)
       })
       return { dateRange }
     },
@@ -205,7 +249,7 @@ export const Range: Story = {
         <p class="text-xs text-muted-foreground mb-2">Select a date range</p>
         <DatePicker v-model="dateRange" range />
         <p class="text-xs text-muted-foreground mt-2">
-          Selected: {{ dateRange?.start?.toString() }} - {{ dateRange?.end?.toString() }}
+          Selected: {{ dateRange?.start?.toLocaleDateString() }} - {{ dateRange?.end?.toLocaleDateString() }}
         </p>
       </div>
     `
@@ -216,7 +260,7 @@ export const RangeEmpty: Story = {
   render: () => ({
     components: { DatePicker },
     setup() {
-      const dateRange = ref(undefined)
+      const dateRange = ref({ start: null, end: null })
       return { dateRange }
     },
     template: `
@@ -233,8 +277,8 @@ export const RangeCustomSeparator: Story = {
     components: { DatePicker },
     setup() {
       const dateRange = ref({
-        start: new CalendarDate(2024, 12, 10),
-        end: new CalendarDate(2024, 12, 20)
+        start: createDate(2024, 12, 10),
+        end: createDate(2024, 12, 20)
       })
       return { dateRange }
     },
@@ -251,9 +295,9 @@ export const WithMinMaxDates: Story = {
   render: () => ({
     components: { DatePicker },
     setup() {
-      const date = ref(new CalendarDate(2024, 12, 15))
-      const minDate = new CalendarDate(2024, 12, 1)
-      const maxDate = new CalendarDate(2024, 12, 31)
+      const date = ref<Date | null>(createDate(2024, 12, 15))
+      const minDate = createDate(2024, 12, 1)
+      const maxDate = createDate(2024, 12, 31)
       return { date, minDate, maxDate }
     },
     template: `
@@ -261,7 +305,7 @@ export const WithMinMaxDates: Story = {
         <p class="text-xs text-muted-foreground mb-2">Date limited to December 2024</p>
         <DatePicker v-model="date" :min-value="minDate" :max-value="maxDate" />
         <p class="text-xs text-muted-foreground mt-2">
-          Min: {{ minDate.toString() }}, Max: {{ maxDate.toString() }}
+          Min: {{ minDate.toLocaleDateString() }}, Max: {{ maxDate.toLocaleDateString() }}
         </p>
       </div>
     `
@@ -273,11 +317,11 @@ export const RangeWithMinMax: Story = {
     components: { DatePicker },
     setup() {
       const dateRange = ref({
-        start: new CalendarDate(2024, 12, 10),
-        end: new CalendarDate(2024, 12, 20)
+        start: createDate(2024, 12, 10),
+        end: createDate(2024, 12, 20)
       })
-      const minDate = new CalendarDate(2024, 12, 1)
-      const maxDate = new CalendarDate(2024, 12, 31)
+      const minDate = createDate(2024, 12, 1)
+      const maxDate = createDate(2024, 12, 31)
       return { dateRange, minDate, maxDate }
     },
     template: `
@@ -285,29 +329,8 @@ export const RangeWithMinMax: Story = {
         <p class="text-xs text-muted-foreground mb-2">Date range limited to December 2024</p>
         <DatePicker v-model="dateRange" range :min-value="minDate" :max-value="maxDate" />
         <p class="text-xs text-muted-foreground mt-2">
-          Range: {{ dateRange?.start?.toString() }} - {{ dateRange?.end?.toString() }}
+          Range: {{ dateRange?.start?.toLocaleDateString() }} - {{ dateRange?.end?.toLocaleDateString() }}
         </p>
-      </div>
-    `
-  })
-}
-
-export const WithUnavailableDates: Story = {
-  render: () => ({
-    components: { DatePicker },
-    setup() {
-      const date = ref(new CalendarDate(2024, 12, 18))
-      const isDateUnavailable = (dateValue: DateValue) => {
-        // Disable weekends
-        const dayOfWeek = dateValue.toDate('UTC').getDay()
-        return dayOfWeek === 0 || dayOfWeek === 6
-      }
-      return { date, isDateUnavailable }
-    },
-    template: `
-      <div>
-        <p class="text-xs text-muted-foreground mb-2">Weekends are unavailable</p>
-        <DatePicker v-model="date" :is-date-unavailable="isDateUnavailable" />
       </div>
     `
   })
@@ -317,21 +340,10 @@ export const Disabled: Story = {
   render: () => ({
     components: { DatePicker },
     setup() {
-      const date = ref(new CalendarDate(2024, 12, 18))
+      const date = ref<Date | null>(createDate(2024, 12, 18))
       return { date }
     },
     template: '<DatePicker v-model="date" disabled />'
-  })
-}
-
-export const ReadOnly: Story = {
-  render: () => ({
-    components: { DatePicker },
-    setup() {
-      const date = ref(new CalendarDate(2024, 12, 18))
-      return { date }
-    },
-    template: '<DatePicker v-model="date" readonly />'
   })
 }
 
@@ -339,25 +351,85 @@ export const Loading: Story = {
   render: () => ({
     components: { DatePicker },
     setup() {
-      const date = ref(new CalendarDate(2024, 12, 18))
+      const date = ref<Date | null>(createDate(2024, 12, 18))
       return { date }
     },
     template: '<DatePicker v-model="date" loading />'
   })
 }
 
-export const WithGranularity: Story = {
+export const WithPlaceholder: Story = {
   render: () => ({
     components: { DatePicker },
     setup() {
-      const date = ref(new CalendarDate(2024, 12, 18))
+      const date = ref<Date | null>(null)
       return { date }
     },
+    template: '<DatePicker v-model="date" placeholder="Choose a date..." />'
+  })
+}
+
+export const WithAutofocus: Story = {
+  render: () => ({
+    components: { DatePicker },
+    setup() {
+      const date = ref<Date | null>(null)
+      return { date }
+    },
+    template: '<DatePicker v-model="date" autofocus />'
+  })
+}
+
+// Combined example showing different states
+export const AllStates: Story = {
+  render: () => ({
+    components: { DatePicker },
+    setup() {
+      const singleDate = ref<Date | null>(createDate(2024, 12, 18))
+      const rangeDate = ref({
+        start: createDate(2024, 12, 10),
+        end: createDate(2024, 12, 20)
+      })
+      const emptyDate = ref<Date | null>(null)
+      const disabledDate = ref<Date | null>(createDate(2024, 12, 18))
+      
+      return { singleDate, rangeDate, emptyDate, disabledDate }
+    },
     template: `
-      <div class="space-y-4">
+      <div class="space-y-6 p-4">
         <div>
-          <p class="text-xs text-muted-foreground mb-2">Day granularity (default)</p>
-          <DatePicker v-model="date" granularity="day" />
+          <h3 class="text-sm font-medium mb-3">Single Date Picker</h3>
+          <div class="space-y-4">
+            <DatePicker v-model="singleDate" placeholder="Select date..." />
+            <DatePicker v-model="emptyDate" placeholder="No date selected" />
+            <DatePicker v-model="disabledDate" disabled placeholder="Disabled" />
+          </div>
+        </div>
+        
+        <div>
+          <h3 class="text-sm font-medium mb-3">Range Date Picker</h3>
+          <div class="space-y-4">
+            <DatePicker v-model="rangeDate" range placeholder="Select date range..." />
+            <DatePicker v-model="rangeDate" range separator-icon="solar:arrow-right-linear" />
+          </div>
+        </div>
+        
+        <div>
+          <h3 class="text-sm font-medium mb-3">Different Colors</h3>
+          <div class="space-y-4">
+            <DatePicker v-model="singleDate" color="primary" />
+            <DatePicker v-model="singleDate" color="success" />
+            <DatePicker v-model="singleDate" color="error" />
+          </div>
+        </div>
+        
+        <div>
+          <h3 class="text-sm font-medium mb-3">Different Variants</h3>
+          <div class="space-y-4">
+            <DatePicker v-model="singleDate" variant="outline" />
+            <DatePicker v-model="singleDate" variant="filled" />
+            <DatePicker v-model="singleDate" variant="ghost" />
+          </div>
         </div>
       </div>
     `

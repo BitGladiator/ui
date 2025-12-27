@@ -4,7 +4,10 @@ export default tv({
   slots: {
     base: 'relative inline-flex items-center gap-1 rounded-lg border transition-all duration-200 outline-none disabled:cursor-not-allowed disabled:opacity-50 text-foreground w-full',
     segment:
-      'inline-block rounded px-0.5 py-0 tabular-nums text-foreground outline-none focus:bg-accent focus:text-accent-foreground data-[placeholder]:text-muted-foreground flex-1 min-w-0',
+      'inline-block rounded px-1 py-0.5 tabular-nums text-foreground outline-none ' +
+      'focus:bg-accent focus:text-accent-foreground focus:ring-2 focus:ring-primary/20 ' +
+      'data-[placeholder]:text-muted-foreground min-w-[1.5rem] text-center cursor-text ' +
+      'transition-all duration-150',
     leading: 'flex items-center justify-center shrink-0',
     leadingIcon: 'shrink-0 text-muted-foreground',
     trailing: 'flex items-center justify-center shrink-0',
@@ -32,7 +35,7 @@ export default tv({
       },
       lg: {
         base: 'h-12 px-4 text-lg gap-2 min-h-12',
-        segment: 'text-lg py-1',
+        segment: 'text-lg py-1 px-1.5 min-w-[2rem]', // ADD min-width
         leadingIcon: 'w-5 h-5',
         trailingIcon: 'w-5 h-5',
         loadingIcon: 'w-5 h-5',

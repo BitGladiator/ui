@@ -1,6 +1,15 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted } from 'vue'
-import { Icon } from '@iconify/vue'
+import Icon from './Icon.vue'
+import {
+  NavigationMenuRoot as NavigationMenuPrimitive,
+  NavigationMenuContent,
+  NavigationMenuItem,
+  NavigationMenuLink,
+  NavigationMenuList,
+  NavigationMenuTrigger,
+  NavigationMenuViewport
+} from 'reka-ui'
 import theme from '@/themes/navigation-menu'
 import type { NavigationItem } from '@/config/navigation'
 
@@ -26,7 +35,7 @@ const props = withDefaults(defineProps<NavigationMenuProps>(), {
 
 const emit = defineEmits<{
   'update:collapsed': [value: boolean]
-  'select': [item: NavigationItem]
+  select: [item: NavigationItem]
 }>()
 
 /* -------------------------------------------------------------------------- */
@@ -65,7 +74,7 @@ const internalCollapsed = ref(props.collapsed)
 const mobileDrawerOpen = ref(false)
 
 const collapsed = computed({
-  get: () => isMobile.value ? false : internalCollapsed.value,
+  get: () => (isMobile.value ? false : internalCollapsed.value),
   set: (val: boolean) => {
     internalCollapsed.value = val
     emit('update:collapsed', val)
@@ -139,121 +148,148 @@ const handleItemClick = (item: NavigationItem, e: Event) => {
       ]"
       :style="{ width: sidebarWidth }"
     >
-      <header class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800 shrink-0">
-        <h2 v-if="!collapsed" class="font-semibold text-gray-900 dark:text-gray-100">Navigation</h2>
+      <header
+        class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800 shrink-0"
+      >
+        <h2
+          v-if="!collapsed"
+          class="font-semibold text-gray-900 dark:text-gray-100"
+        >
+          Navigation
+        </h2>
         <button
           @click="toggleSidebar"
           class="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
           :aria-label="collapsed ? 'Expand sidebar' : 'Collapse sidebar'"
         >
           <Icon
-            :icon="collapsed ? 'solar:sidebar-code-linear' : 'solar:sidebar-minimalistic-linear'"
+            :icon="
+              collapsed
+                ? 'solar:sidebar-code-linear'
+                : 'solar:sidebar-minimalistic-linear'
+            "
             class="w-5 h-5 text-gray-600 dark:text-gray-400"
           />
         </button>
       </header>
 
       <nav class="flex-1 overflow-y-auto p-2">
-        <ul :class="[ui.list]">
-          <template v-for="item in menuItems" :key="item.label">
-            <li :class="ui.item">
-              <!-- Item with children -->
-              <button
-                v-if="item.children && item.children.length > 0"
-                @click="(e) => handleItemClick(item, e)"
-                :class="[
-                  ui.trigger,
-                  item.disabled && 'opacity-50 cursor-not-allowed'
-                ]"
-                :disabled="item.disabled"
-                :aria-expanded="isExpanded(item.label)"
-              >
-                <Icon v-if="item.icon" :icon="item.icon" :class="ui.triggerIcon" />
-                <span v-if="!collapsed" class="flex-1 text-left">{{ item.label }}</span>
-                <Icon
-                  v-if="!collapsed"
-                  icon="solar:alt-arrow-down-linear"
-                  :class="[
-                    ui.triggerCaret,
-                    isExpanded(item.label) && 'rotate-180'
-                  ]"
-                />
-              </button>
-
-              <!-- Item with router link -->
-              <router-link
-                v-else-if="item.to"
-                :to="item.to"
-                :class="[
-                  ui.link,
-                  item.disabled && 'opacity-50 cursor-not-allowed pointer-events-none'
-                ]"
-                @click="(e) => handleItemClick(item, e)"
-              >
-                <Icon v-if="item.icon" :icon="item.icon" :class="ui.linkIcon" />
-                <span v-if="!collapsed">{{ item.label }}</span>
-              </router-link>
-
-              <!-- Item with href -->
-              <a
-                v-else
-                :href="item.href || '#'"
-                :class="[
-                  ui.link,
-                  item.disabled && 'opacity-50 cursor-not-allowed pointer-events-none'
-                ]"
-                @click="(e) => handleItemClick(item, e)"
-              >
-                <Icon v-if="item.icon" :icon="item.icon" :class="ui.linkIcon" />
-                <span v-if="!collapsed">{{ item.label }}</span>
-              </a>
-
-              <!-- Children -->
-              <Transition
-                enter-active-class="transition-all duration-200 ease-out"
-                leave-active-class="transition-all duration-150 ease-in"
-                enter-from-class="opacity-0 -translate-y-1"
-                enter-to-class="opacity-100 translate-y-0"
-                leave-from-class="opacity-100 translate-y-0"
-                leave-to-class="opacity-0 -translate-y-1"
-              >
-                <ul
-                  v-if="item.children && item.children.length > 0 && isExpanded(item.label) && !collapsed"
-                  class="ml-4 mt-1 space-y-1"
+        <NavigationMenuPrimitive orientation="vertical">
+          <NavigationMenuList :class="[ui.list]">
+            <template v-for="item in menuItems" :key="item.label">
+              <li :class="ui.item">
+                <!-- Item with children -->
+                <!-- Item with children -->
+                <NavigationMenuItem
+                  v-if="item.children && item.children.length > 0"
                 >
-                  <li v-for="child in item.children" :key="child.label">
-                    <router-link
-                      v-if="child.to"
-                      :to="child.to"
-                      :class="[
-                        ui.link,
-                        'text-sm',
-                        child.disabled && 'opacity-50 cursor-not-allowed pointer-events-none'
-                      ]"
-                      @click="(e) => handleItemClick(child, e)"
-                    >
-                      <Icon v-if="child.icon" :icon="child.icon" :class="ui.linkIcon" />
-                      <span>{{ child.label }}</span>
-                    </router-link>
-                    <a
-                      v-else
-                      :href="child.href || '#'"
-                      :class="[
-                        ui.link,
-                        'text-sm',
-                        child.disabled && 'opacity-50 cursor-not-allowed pointer-events-none'
-                      ]"
-                      @click="(e) => handleItemClick(child, e)"
-                    >
-                      <Icon v-if="child.icon" :icon="child.icon" :class="ui.linkIcon" />
-                      <span>{{ child.label }}</span>
-                    </a>
-                  </li>
-                </ul>
-              </Transition>
-            </li>
-          </template>
-        </ul>
+                  <NavigationMenuTrigger
+                    :class="[
+                      ui.trigger,
+                      item.disabled && 'opacity-50 cursor-not-allowed'
+                    ]"
+                    :disabled="item.disabled"
+                  >
+                    <Icon
+                      v-if="item.icon"
+                      :icon="item.icon"
+                      :class="ui.triggerIcon"
+                    />
+                    <span v-if="!collapsed" class="flex-1 text-left">{{
+                      item.label
+                    }}</span>
+                    <Icon
+                      v-if="!collapsed"
+                      icon="solar:alt-arrow-down-linear"
+                      :class="ui.triggerCaret"
+                    />
+                  </NavigationMenuTrigger>
+
+                  <NavigationMenuContent :class="ui.content">
+                    <ul class="ml-4 mt-1 space-y-1">
+                      <li v-for="child in item.children" :key="child.label">
+                        <router-link
+                          v-if="child.to"
+                          :to="child.to"
+                          :class="[
+                            ui.link,
+                            'text-sm',
+                            child.disabled &&
+                              'opacity-50 cursor-not-allowed pointer-events-none'
+                          ]"
+                          @click="(e) => handleItemClick(child, e)"
+                        >
+                          <Icon
+                            v-if="child.icon"
+                            :icon="child.icon"
+                            :class="ui.linkIcon"
+                          />
+                          <span>{{ child.label }}</span>
+                        </router-link>
+                        <a
+                          v-else
+                          :href="child.href || '#'"
+                          :class="[
+                            ui.link,
+                            'text-sm',
+                            child.disabled &&
+                              'opacity-50 cursor-not-allowed pointer-events-none'
+                          ]"
+                          @click="(e) => handleItemClick(child, e)"
+                        >
+                          <Icon
+                            v-if="child.icon"
+                            :icon="child.icon"
+                            :class="ui.linkIcon"
+                          />
+                          <span>{{ child.label }}</span>
+                        </a>
+                      </li>
+                    </ul>
+                  </NavigationMenuContent>
+                </NavigationMenuItem>
+
+                <!-- Item with router link -->
+                <router-link
+                  v-else-if="item.to"
+                  :to="item.to"
+                  :class="[
+                    ui.link,
+                    item.disabled &&
+                      'opacity-50 cursor-not-allowed pointer-events-none'
+                  ]"
+                  @click="(e) => handleItemClick(item, e)"
+                >
+                  <Icon
+                    v-if="item.icon"
+                    :icon="item.icon"
+                    :class="ui.linkIcon"
+                  />
+                  <span v-if="!collapsed">{{ item.label }}</span>
+                </router-link>
+
+                <!-- Item with href -->
+                <a
+                  v-else
+                  :href="item.href || '#'"
+                  :class="[
+                    ui.link,
+                    item.disabled &&
+                      'opacity-50 cursor-not-allowed pointer-events-none'
+                  ]"
+                  @click="(e) => handleItemClick(item, e)"
+                >
+                  <Icon
+                    v-if="item.icon"
+                    :icon="item.icon"
+                    :class="ui.linkIcon"
+                  />
+                  <span v-if="!collapsed">{{ item.label }}</span>
+                </a>
+              </li>
+            </template>
+          </NavigationMenuList>
+        </NavigationMenuPrimitive>
       </nav>
     </aside>
 
@@ -287,117 +323,143 @@ const handleItemClick = (item: NavigationItem, e: Event) => {
         class="fixed inset-y-0 left-0 z-50 bg-white dark:bg-gray-900 shadow-xl flex flex-col"
         :style="{ width: sidebarWidth }"
       >
-        <header class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800 shrink-0">
-          <h2 class="font-semibold text-gray-900 dark:text-gray-100">Navigation</h2>
+        <header
+          class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800 shrink-0"
+        >
+          <h2 class="font-semibold text-gray-900 dark:text-gray-100">
+            Navigation
+          </h2>
           <button
             @click="closeMobileDrawer"
             class="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
             aria-label="Close menu"
           >
-            <Icon icon="solar:close-linear" class="w-5 h-5 text-gray-600 dark:text-gray-400" />
+            <Icon
+              icon="solar:close-linear"
+              class="w-5 h-5 text-gray-600 dark:text-gray-400"
+            />
           </button>
         </header>
 
         <nav class="flex-1 overflow-y-auto p-2">
-          <ul :class="[ui.list]">
-            <template v-for="item in menuItems" :key="item.label">
-              <li :class="ui.item">
-                <!-- Item with children -->
-                <button
-                  v-if="item.children && item.children.length > 0"
-                  @click="(e) => handleItemClick(item, e)"
-                  :class="[
-                    ui.trigger,
-                    item.disabled && 'opacity-50 cursor-not-allowed'
-                  ]"
-                  :disabled="item.disabled"
-                  :aria-expanded="isExpanded(item.label)"
-                >
-                  <Icon v-if="item.icon" :icon="item.icon" :class="ui.triggerIcon" />
-                  <span class="flex-1 text-left">{{ item.label }}</span>
-                  <Icon
-                    icon="solar:alt-arrow-down-linear"
-                    :class="[
-                      ui.triggerCaret,
-                      isExpanded(item.label) && 'rotate-180'
-                    ]"
-                  />
-                </button>
-
-                <!-- Item with router link -->
-                <router-link
-                  v-else-if="item.to"
-                  :to="item.to"
-                  :class="[
-                    ui.link,
-                    item.disabled && 'opacity-50 cursor-not-allowed pointer-events-none'
-                  ]"
-                  @click="(e) => handleItemClick(item, e)"
-                >
-                  <Icon v-if="item.icon" :icon="item.icon" :class="ui.linkIcon" />
-                  <span>{{ item.label }}</span>
-                </router-link>
-
-                <!-- Item with href -->
-                <a
-                  v-else
-                  :href="item.href || '#'"
-                  :class="[
-                    ui.link,
-                    item.disabled && 'opacity-50 cursor-not-allowed pointer-events-none'
-                  ]"
-                  @click="(e) => handleItemClick(item, e)"
-                >
-                  <Icon v-if="item.icon" :icon="item.icon" :class="ui.linkIcon" />
-                  <span>{{ item.label }}</span>
-                </a>
-
-                <!-- Children -->
-                <Transition
-                  enter-active-class="transition-all duration-200 ease-out"
-                  leave-active-class="transition-all duration-150 ease-in"
-                  enter-from-class="opacity-0 -translate-y-1"
-                  enter-to-class="opacity-100 translate-y-0"
-                  leave-from-class="opacity-100 translate-y-0"
-                  leave-to-class="opacity-0 -translate-y-1"
-                >
-                  <ul
-                    v-if="item.children && item.children.length > 0 && isExpanded(item.label)"
-                    class="ml-4 mt-1 space-y-1"
+          <NavigationMenuPrimitive orientation="vertical">
+            <NavigationMenuList :class="[ui.list]">
+              <template v-for="item in menuItems" :key="item.label">
+                <li :class="ui.item">
+                  <!-- Item with children -->
+                  <!-- Item with children -->
+                  <NavigationMenuItem
+                    v-if="item.children && item.children.length > 0"
                   >
-                    <li v-for="child in item.children" :key="child.label">
-                      <router-link
-                        v-if="child.to"
-                        :to="child.to"
-                        :class="[
-                          ui.link,
-                          'text-sm',
-                          child.disabled && 'opacity-50 cursor-not-allowed pointer-events-none'
-                        ]"
-                        @click="(e) => handleItemClick(child, e)"
-                      >
-                        <Icon v-if="child.icon" :icon="child.icon" :class="ui.linkIcon" />
-                        <span>{{ child.label }}</span>
-                      </router-link>
-                      <a
-                        v-else
-                        :href="child.href || '#'"
-                        :class="[
-                          ui.link,
-                          'text-sm',
-                          child.disabled && 'opacity-50 cursor-not-allowed pointer-events-none'
-                        ]"
-                        @click="(e) => handleItemClick(child, e)"
-                      >
-                        <Icon v-if="child.icon" :icon="child.icon" :class="ui.linkIcon" />
-                        <span>{{ child.label }}</span>
-                      </a>
-                    </li>
-                  </ul>
-                </Transition>
-              </li>
-            </template>
-          </ul>
+                    <NavigationMenuTrigger
+                      :class="[
+                        ui.trigger,
+                        item.disabled && 'opacity-50 cursor-not-allowed'
+                      ]"
+                      :disabled="item.disabled"
+                    >
+                      <Icon
+                        v-if="item.icon"
+                        :icon="item.icon"
+                        :class="ui.triggerIcon"
+                      />
+                      <span v-if="!collapsed" class="flex-1 text-left">{{
+                        item.label
+                      }}</span>
+                      <Icon
+                        v-if="!collapsed"
+                        icon="solar:alt-arrow-down-linear"
+                        :class="ui.triggerCaret"
+                      />
+                    </NavigationMenuTrigger>
+
+                    <NavigationMenuContent :class="ui.content">
+                      <ul class="ml-4 mt-1 space-y-1">
+                        <li v-for="child in item.children" :key="child.label">
+                          <router-link
+                            v-if="child.to"
+                            :to="child.to"
+                            :class="[
+                              ui.link,
+                              'text-sm',
+                              child.disabled &&
+                                'opacity-50 cursor-not-allowed pointer-events-none'
+                            ]"
+                            @click="(e) => handleItemClick(child, e)"
+                          >
+                            <Icon
+                              v-if="child.icon"
+                              :icon="child.icon"
+                              :class="ui.linkIcon"
+                            />
+                            <span>{{ child.label }}</span>
+                          </router-link>
+                          <a
+                            v-else
+                            :href="child.href || '#'"
+                            :class="[
+                              ui.link,
+                              'text-sm',
+                              child.disabled &&
+                                'opacity-50 cursor-not-allowed pointer-events-none'
+                            ]"
+                            @click="(e) => handleItemClick(child, e)"
+                          >
+                            <Icon
+                              v-if="child.icon"
+                              :icon="child.icon"
+                              :class="ui.linkIcon"
+                            />
+                            <span>{{ child.label }}</span>
+                          </a>
+                        </li>
+                      </ul>
+                    </NavigationMenuContent>
+                  </NavigationMenuItem>
+
+                  <!-- Item with router link -->
+                  <router-link
+                    v-else-if="item.to"
+                    :to="item.to"
+                    :class="[
+                      ui.link,
+                      item.disabled &&
+                        'opacity-50 cursor-not-allowed pointer-events-none'
+                    ]"
+                    @click="(e) => handleItemClick(item, e)"
+                  >
+                    <Icon
+                      v-if="item.icon"
+                      :icon="item.icon"
+                      :class="ui.linkIcon"
+                    />
+                    <span>{{ item.label }}</span>
+                  </router-link>
+
+                  <!-- Item with href -->
+                  <a
+                    v-else
+                    :href="item.href || '#'"
+                    :class="[
+                      ui.link,
+                      item.disabled &&
+                        'opacity-50 cursor-not-allowed pointer-events-none'
+                    ]"
+                    @click="(e) => handleItemClick(item, e)"
+                  >
+                    <Icon
+                      v-if="item.icon"
+                      :icon="item.icon"
+                      :class="ui.linkIcon"
+                    />
+                    <span>{{ item.label }}</span>
+                  </a>
+
+                  <!-- Children -->
+                </li>
+              </template>
+            </NavigationMenuList>
+          </NavigationMenuPrimitive>
         </nav>
       </aside>
     </Transition>
@@ -420,82 +482,102 @@ const handleItemClick = (item: NavigationItem, e: Event) => {
   >
     <div class="px-4 py-3 flex items-center justify-between">
       <!-- Desktop Menu -->
-      <ul class="hidden md:flex items-center gap-1">
-        <template v-for="item in menuItems" :key="item.label">
-          <li class="relative group">
-            <!-- Item with children (dropdown) -->
-            <button
-              v-if="item.children && item.children.length > 0"
-              :class="[
-                ui.trigger,
-                item.disabled && 'opacity-50 cursor-not-allowed'
-              ]"
-              :disabled="item.disabled"
-            >
-              <Icon v-if="item.icon" :icon="item.icon" :class="ui.triggerIcon" />
-              <span>{{ item.label }}</span>
-              <Icon icon="solar:alt-arrow-down-linear" class="w-4 h-4 ml-1" />
-            </button>
+      <NavigationMenuPrimitive orientation="horizontal">
+        <NavigationMenuList class="hidden md:flex items-center gap-1">
+          <template v-for="item in menuItems" :key="item.label">
+            <li class="relative group">
+              <!-- Item with children (dropdown) -->
+              <NavigationMenuItem
+                v-if="item.children && item.children.length > 0"
+              >
+                <NavigationMenuTrigger
+                  :class="[
+                    ui.trigger,
+                    item.disabled && 'opacity-50 cursor-not-allowed'
+                  ]"
+                  :disabled="item.disabled"
+                >
+                  <Icon
+                    v-if="item.icon"
+                    :icon="item.icon"
+                    :class="ui.triggerIcon"
+                  />
+                  <span>{{ item.label }}</span>
+                  <Icon
+                    icon="solar:alt-arrow-down-linear"
+                    class="w-4 h-4 ml-1"
+                  />
+                </NavigationMenuTrigger>
 
-            <!-- Item with router link -->
-            <router-link
-              v-else-if="item.to"
-              :to="item.to"
-              :class="[
-                ui.link,
-                item.disabled && 'opacity-50 cursor-not-allowed pointer-events-none'
-              ]"
-              @click="(e) => handleItemClick(item, e)"
-            >
-              <Icon v-if="item.icon" :icon="item.icon" :class="ui.linkIcon" />
-              <span>{{ item.label }}</span>
-            </router-link>
+                <NavigationMenuContent :class="ui.content">
+                  <ul class="py-1">
+                    <li v-for="child in item.children" :key="child.label">
+                      <router-link
+                        v-if="child.to"
+                        :to="child.to"
+                        class="flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                        @click="(e) => handleItemClick(child, e)"
+                      >
+                        <Icon
+                          v-if="child.icon"
+                          :icon="child.icon"
+                          class="w-4 h-4"
+                        />
+                        <span>{{ child.label }}</span>
+                      </router-link>
+                      <a
+                        v-else
+                        :href="child.href || '#'"
+                        class="flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                        @click="(e) => handleItemClick(child, e)"
+                      >
+                        <Icon
+                          v-if="child.icon"
+                          :icon="child.icon"
+                          class="w-4 h-4"
+                        />
+                        <span>{{ child.label }}</span>
+                      </a>
+                    </li>
+                  </ul>
+                </NavigationMenuContent>
+              </NavigationMenuItem>
 
-            <!-- Item with href -->
-            <a
-              v-else
-              :href="item.href || '#'"
-              :class="[
-                ui.link,
-                item.disabled && 'opacity-50 cursor-not-allowed pointer-events-none'
-              ]"
-              @click="(e) => handleItemClick(item, e)"
-            >
-              <Icon v-if="item.icon" :icon="item.icon" :class="ui.linkIcon" />
-              <span>{{ item.label }}</span>
-            </a>
+              <!-- Item with router link -->
+              <router-link
+                v-else-if="item.to"
+                :to="item.to"
+                :class="[
+                  ui.link,
+                  item.disabled &&
+                    'opacity-50 cursor-not-allowed pointer-events-none'
+                ]"
+                @click="(e) => handleItemClick(item, e)"
+              >
+                <Icon v-if="item.icon" :icon="item.icon" :class="ui.linkIcon" />
+                <span>{{ item.label }}</span>
+              </router-link>
 
-            <!-- Dropdown menu -->
-            <div
-              v-if="item.children && item.children.length > 0"
-              class="absolute left-0 top-full mt-1 min-w-[200px] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50"
-            >
-              <ul class="py-1">
-                <li v-for="child in item.children" :key="child.label">
-                  <router-link
-                    v-if="child.to"
-                    :to="child.to"
-                    class="flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                    @click="(e) => handleItemClick(child, e)"
-                  >
-                    <Icon v-if="child.icon" :icon="child.icon" class="w-4 h-4" />
-                    <span>{{ child.label }}</span>
-                  </router-link>
-                  <a
-                    v-else
-                    :href="child.href || '#'"
-                    class="flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                    @click="(e) => handleItemClick(child, e)"
-                  >
-                    <Icon v-if="child.icon" :icon="child.icon" class="w-4 h-4" />
-                    <span>{{ child.label }}</span>
-                  </a>
-                </li>
-              </ul>
-            </div>
-          </li>
-        </template>
-      </ul>
+              <!-- Item with href -->
+              <a
+                v-else
+                :href="item.href || '#'"
+                :class="[
+                  ui.link,
+                  item.disabled &&
+                    'opacity-50 cursor-not-allowed pointer-events-none'
+                ]"
+                @click="(e) => handleItemClick(item, e)"
+              >
+                <Icon v-if="item.icon" :icon="item.icon" :class="ui.linkIcon" />
+                <span>{{ item.label }}</span>
+              </a>
+
+              <!-- Dropdown menu -->
+            </li>
+          </template>
+        </NavigationMenuList>
+      </NavigationMenuPrimitive>
 
       <!-- Mobile Menu Button -->
       <button
@@ -536,117 +618,127 @@ const handleItemClick = (item: NavigationItem, e: Event) => {
         v-if="isMobile && mobileDrawerOpen"
         class="fixed inset-y-0 left-0 z-50 w-[280px] bg-white dark:bg-gray-900 shadow-xl flex flex-col"
       >
-        <header class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800 shrink-0">
+        <header
+          class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800 shrink-0"
+        >
           <h2 class="font-semibold text-gray-900 dark:text-gray-100">Menu</h2>
           <button
             @click="closeMobileDrawer"
             class="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
             aria-label="Close menu"
           >
-            <Icon icon="solar:close-linear" class="w-5 h-5 text-gray-600 dark:text-gray-400" />
+            <Icon
+              icon="solar:close-linear"
+              class="w-5 h-5 text-gray-600 dark:text-gray-400"
+            />
           </button>
         </header>
 
         <nav class="flex-1 overflow-y-auto p-2">
-          <ul class="space-y-1">
-            <template v-for="item in menuItems" :key="item.label">
-              <li>
-                <!-- Item with children -->
-                <button
-                  v-if="item.children && item.children.length > 0"
-                  @click="(e) => handleItemClick(item, e)"
-                  :class="[
-                    ui.trigger,
-                    item.disabled && 'opacity-50 cursor-not-allowed'
-                  ]"
-                  :disabled="item.disabled"
-                  :aria-expanded="isExpanded(item.label)"
-                >
-                  <Icon v-if="item.icon" :icon="item.icon" :class="ui.triggerIcon" />
-                  <span class="flex-1 text-left">{{ item.label }}</span>
-                  <Icon
-                    icon="solar:alt-arrow-down-linear"
-                    :class="[
-                      ui.triggerCaret,
-                      isExpanded(item.label) && 'rotate-180'
-                    ]"
-                  />
-                </button>
-
-                <!-- Item with router link -->
-                <router-link
-                  v-else-if="item.to"
-                  :to="item.to"
-                  :class="[
-                    ui.link,
-                    item.disabled && 'opacity-50 cursor-not-allowed pointer-events-none'
-                  ]"
-                  @click="(e) => handleItemClick(item, e)"
-                >
-                  <Icon v-if="item.icon" :icon="item.icon" :class="ui.linkIcon" />
-                  <span>{{ item.label }}</span>
-                </router-link>
-
-                <!-- Item with href -->
-                <a
-                  v-else
-                  :href="item.href || '#'"
-                  :class="[
-                    ui.link,
-                    item.disabled && 'opacity-50 cursor-not-allowed pointer-events-none'
-                  ]"
-                  @click="(e) => handleItemClick(item, e)"
-                >
-                  <Icon v-if="item.icon" :icon="item.icon" :class="ui.linkIcon" />
-                  <span>{{ item.label }}</span>
-                </a>
-
-                <!-- Children -->
-                <Transition
-                  enter-active-class="transition-all duration-200 ease-out"
-                  leave-active-class="transition-all duration-150 ease-in"
-                  enter-from-class="opacity-0 -translate-y-1"
-                  enter-to-class="opacity-100 translate-y-0"
-                  leave-from-class="opacity-100 translate-y-0"
-                  leave-to-class="opacity-0 -translate-y-1"
-                >
-                  <ul
-                    v-if="item.children && item.children.length > 0 && isExpanded(item.label)"
-                    class="ml-4 mt-1 space-y-1"
+          <NavigationMenuPrimitive orientation="vertical">
+            <NavigationMenuList class="space-y-1">
+              <template v-for="item in menuItems" :key="item.label">
+                <li>
+                  <!-- Item with children -->
+                  <NavigationMenuItem
+                    v-if="item.children && item.children.length > 0"
                   >
-                    <li v-for="child in item.children" :key="child.label">
-                      <router-link
-                        v-if="child.to"
-                        :to="child.to"
-                        :class="[
-                          ui.link,
-                          'text-sm',
-                          child.disabled && 'opacity-50 cursor-not-allowed pointer-events-none'
-                        ]"
-                        @click="(e) => handleItemClick(child, e)"
-                      >
-                        <Icon v-if="child.icon" :icon="child.icon" :class="ui.linkIcon" />
-                        <span>{{ child.label }}</span>
-                      </router-link>
-                      <a
-                        v-else
-                        :href="child.href || '#'"
-                        :class="[
-                          ui.link,
-                          'text-sm',
-                          child.disabled && 'opacity-50 cursor-not-allowed pointer-events-none'
-                        ]"
-                        @click="(e) => handleItemClick(child, e)"
-                      >
-                        <Icon v-if="child.icon" :icon="child.icon" :class="ui.linkIcon" />
-                        <span>{{ child.label }}</span>
-                      </a>
-                    </li>
-                  </ul>
-                </Transition>
-              </li>
-            </template>
-          </ul>
+                    <NavigationMenuTrigger
+                      :class="[
+                        ui.trigger,
+                        item.disabled && 'opacity-50 cursor-not-allowed'
+                      ]"
+                      :disabled="item.disabled"
+                    >
+                      <Icon
+                        v-if="item.icon"
+                        :icon="item.icon"
+                        :class="ui.triggerIcon"
+                      />
+                      <span>{{ item.label }}</span>
+                      <Icon
+                        icon="solar:alt-arrow-down-linear"
+                        class="w-4 h-4 ml-1"
+                      />
+                    </NavigationMenuTrigger>
+
+                    <NavigationMenuContent :class="ui.content">
+                      <ul class="py-1">
+                        <li v-for="child in item.children" :key="child.label">
+                          <router-link
+                            v-if="child.to"
+                            :to="child.to"
+                            class="flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                            @click="(e) => handleItemClick(child, e)"
+                          >
+                            <Icon
+                              v-if="child.icon"
+                              :icon="child.icon"
+                              class="w-4 h-4"
+                            />
+                            <span>{{ child.label }}</span>
+                          </router-link>
+                          <a
+                            v-else
+                            :href="child.href || '#'"
+                            class="flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                            @click="(e) => handleItemClick(child, e)"
+                          >
+                            <Icon
+                              v-if="child.icon"
+                              :icon="child.icon"
+                              class="w-4 h-4"
+                            />
+                            <span>{{ child.label }}</span>
+                          </a>
+                        </li>
+                      </ul>
+                    </NavigationMenuContent>
+                  </NavigationMenuItem>
+
+                  <!-- Item with router link -->
+                  <router-link
+                    v-else-if="item.to"
+                    :to="item.to"
+                    :class="[
+                      ui.link,
+                      item.disabled &&
+                        'opacity-50 cursor-not-allowed pointer-events-none'
+                    ]"
+                    @click="(e) => handleItemClick(item, e)"
+                  >
+                    <Icon
+                      v-if="item.icon"
+                      :icon="item.icon"
+                      :class="ui.linkIcon"
+                    />
+                    <span>{{ item.label }}</span>
+                  </router-link>
+
+                  <!-- Item with href -->
+                  <a
+                    v-else
+                    :href="item.href || '#'"
+                    :class="[
+                      ui.link,
+                      item.disabled &&
+                        'opacity-50 cursor-not-allowed pointer-events-none'
+                    ]"
+                    @click="(e) => handleItemClick(item, e)"
+                  >
+                    <Icon
+                      v-if="item.icon"
+                      :icon="item.icon"
+                      :class="ui.linkIcon"
+                    />
+                    <span>{{ item.label }}</span>
+                  </a>
+
+                  <!-- Children -->
+                </li>
+              </template>
+            </NavigationMenuList>
+          </NavigationMenuPrimitive>
         </nav>
       </aside>
     </Transition>
