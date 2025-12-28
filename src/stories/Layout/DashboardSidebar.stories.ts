@@ -109,7 +109,7 @@ export const Default: Story = {
         <DashboardSidebar :links="links">
           <template #header="{ collapsed }">
           <div class="flex items-center gap-3 overflow-hidden">
-<Avatar size="sm" src="https://github.com/nuxt.png" class="shrink-0 max-w-7 max-h-7" />
+<Avatar size="sm" src="https://github.com/nuxt.png" class="!w-7 !h-7 shrink-0" />
               
               <div v-if="!collapsed" class="flex-1 min-w-0">
                 <p class="text-sm font-medium truncate">John Doe</p>
@@ -166,7 +166,7 @@ export const MobileResponsive: Story = {
           >
             <template #header>
               <div class="flex items-center gap-3 overflow-hidden">
-  <Avatar size="sm" src="https://github.com/nuxt.png" class="shrink-0" />
+<Avatar size="sm" src="https://github.com/nuxt.png" class="!w-7 !h-7 shrink-0" />
                 <div class="flex-1 min-w-0">
                   <p class="text-sm font-medium truncate">John Doe</p>
                   <p class="text-xs text-muted-foreground truncate">Admin</p>
