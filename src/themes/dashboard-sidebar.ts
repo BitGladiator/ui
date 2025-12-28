@@ -82,13 +82,7 @@ export default tv({
         root: 'w-64 md:w-64' // Or use w-full on mobile: 'w-full md:w-64'
       }
     },
-    // Mobile width (full width on mobile)
-    {
-      mobileOpen: true,
-      class: {
-        root: '!w-64' // Force width on mobile when open
-      }
-    }
+    
   ],
   defaultVariants: {
     side: 'left',
