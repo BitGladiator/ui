@@ -73,13 +73,13 @@ export default tv({
     {
       collapsed: true,
       class: {
-        root: '!w-16' // Added !important to override
+        root: 'w-16' // Remove !important
       }
     },
     {
       collapsed: false,
       class: {
-        root: '!w-64' // Added !important to override
+        root: 'w-64 md:w-64' // Or use w-full on mobile: 'w-full md:w-64'
       }
     },
     // Mobile width (full width on mobile)

@@ -111,11 +111,7 @@ export const Default: Story = {
             <div class="flex items-center gap-3 w-full overflow-hidden min-h-[64px]">
               <!-- Use proper avatar size -->
               <div class="shrink-0">
-                <Avatar 
-                  size="sm" 
-                  src="https://github.com/nuxt.png" 
-                  class="w-8 h-8"
-                />
+               <Avatar size="sm" src="https://github.com/nuxt.png" />
               </div>
               <div v-if="!collapsed" class="flex-1 min-w-0">
                 <p class="text-sm font-medium truncate">John Doe</p>
@@ -172,11 +168,7 @@ export const MobileResponsive: Story = {
           >
             <template #header>
               <div class="flex items-center gap-3 w-full overflow-hidden min-h-[64px]">
-                <Avatar 
-                  size="sm" 
-                  src="https://github.com/nuxt.png" 
-                  class="w-8 h-8"
-                />
+               <Avatar size="sm" src="https://github.com/nuxt.png" />
                 <div class="flex-1 min-w-0">
                   <p class="text-sm font-medium truncate">John Doe</p>
                   <p class="text-xs text-muted-foreground truncate">Admin</p>
