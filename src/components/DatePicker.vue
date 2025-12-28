@@ -2,8 +2,16 @@
 import type { ComponentPublicInstance } from 'vue'
 
 export interface DatePickerProps {
-  modelValue?: Date | string | { start: Date | string; end: Date | string } | null
-  defaultValue?: Date | string | { start: Date | string; end: Date | string } | null
+  modelValue?:
+    | Date
+    | string
+    | { start: Date | string; end: Date | string }
+    | null
+  defaultValue?:
+    | Date
+    | string
+    | { start: Date | string; end: Date | string }
+    | null
   size?: 'sm' | 'md' | 'lg'
   variant?: 'outline' | 'filled' | 'ghost' | 'soft' | 'none'
   color?: 'primary' | 'error' | 'success' | 'warning' | 'info'
@@ -40,17 +48,41 @@ export interface DatePickerSlots {
 </script>
 
 <script setup lang="ts">
-import { 
-  computed, 
-  onMounted, 
-  ref, 
-  useSlots, 
-  watch, 
+import {
+  computed,
+  onMounted,
+  ref,
+  useSlots,
+  watch,
   onUnmounted,
   nextTick
 } from 'vue'
 import theme from '@/themes/date-picker'
 import Icon from './Icon.vue'
+import {
+  PopoverRoot,
+  PopoverContent,
+  PopoverTrigger,
+  CalendarRoot,
+  CalendarCell,
+  CalendarCellTrigger,
+  CalendarGrid,
+  CalendarGridBody,
+  CalendarGridHead,
+  CalendarGridRow,
+  CalendarHeadCell,
+  CalendarHeader,
+  CalendarHeading,
+  CalendarNext,
+  CalendarPrev
+} from 'reka-ui'
+import {
+  CalendarDate,
+  getLocalTimeZone,
+  today,
+  isSameDay,
+  DateValue
+} from '@internationalized/date'
 
 const props = withDefaults(defineProps<DatePickerProps>(), {
   size: 'md',
@@ -85,12 +117,14 @@ const isMobile = ref(false)
 const displayValue = ref('')
 const displayStartValue = ref('')
 const displayEndValue = ref('')
+const isPopoverOpen = ref(false)
+// For range mode - track which part is being edited
+const editingRangePart = ref<'start' | 'end'>('start')
 
-// Refs for hidden date inputs
-const singleDateInputRef = ref<HTMLInputElement | null>(null)
-const startDateInputRef = ref<HTMLInputElement | null>(null)
-const endDateInputRef = ref<HTMLInputElement | null>(null)
-const containerRef = ref<HTMLElement | null>(null)
+// Calendar refs - use CalendarDate for reka-ui compatibility
+const calendarValue = ref<CalendarDate | undefined>(undefined)
+const calendarStartValue = ref<CalendarDate | undefined>(undefined)
+const calendarEndValue = ref<CalendarDate | undefined>(undefined)
 
 // Helper function to check if value is a valid date
 function isValidDate(value: any): boolean {
@@ -109,7 +143,7 @@ function toDateIfValid(value: any): Date | null {
 function formatDate(value: any): string {
   const date = toDateIfValid(value)
   if (!date) return ''
-  
+
   return date.toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'short',
@@ -120,7 +154,7 @@ function formatDate(value: any): string {
 function formatDateForInput(value: any): string {
   const date = toDateIfValid(value)
   if (!date) return ''
-  
+
   // Format as YYYY-MM-DD for date input
   const year = date.getFullYear()
   const month = String(date.getMonth() + 1).padStart(2, '0')
@@ -128,6 +162,29 @@ function formatDateForInput(value: any): string {
   return `${year}-${month}-${day}`
 }
 
+function toCalendarDate(
+  date: Date | string | null | undefined
+): CalendarDate | undefined {
+  if (!date) return undefined
+
+  try {
+    const d = new Date(date)
+    if (isNaN(d.getTime())) return undefined
+
+    return new CalendarDate(d.getFullYear(), d.getMonth() + 1, d.getDate())
+  } catch (e) {
+    console.error('Error converting to CalendarDate:', e)
+    return undefined
+  }
+}
+
+// Convert CalendarDate back to Date
+function fromCalendarDate(calendarDate: CalendarDate | undefined): Date | null {
+  if (!calendarDate) return null
+  return new Date(calendarDate.year, calendarDate.month - 1, calendarDate.day)
+}
+
+// Update display values from modelValue
 function updateDisplayValues() {
   if (props.range) {
     // Handle range date
@@ -135,48 +192,87 @@ function updateDisplayValues() {
     if (modelValue && typeof modelValue === 'object') {
       displayStartValue.value = formatDate(modelValue.start)
       displayEndValue.value = formatDate(modelValue.end)
+      // Update calendar values
+      calendarStartValue.value = toCalendarDate(modelValue.start)
+      calendarEndValue.value = toCalendarDate(modelValue.end)
     } else {
       displayStartValue.value = ''
       displayEndValue.value = ''
+      calendarStartValue.value = undefined
+      calendarEndValue.value = undefined
     }
   } else {
     // Handle single date
     displayValue.value = formatDate(props.modelValue)
+    // Update calendar value when prop changes
+    calendarValue.value = toCalendarDate(props.modelValue as Date)
   }
 }
 
 function onUpdate(value: any) {
+  console.log('Date updated:', value)
+
   const event = new Event('change', { target: { value } } as any)
   emits('change', event)
   emits('update:modelValue', value)
   updateDisplayValues()
 }
 
-function onSingleDateChange(event: Event) {
-  const target = event.target as HTMLInputElement
-  const date = target.value ? new Date(target.value) : null
-  onUpdate(date)
+// Handle single date selection from calendar
+function handleSingleDateSelect(value: DateValue) {
+  console.log('Single date selected:', value)
+  
+  if (!value) return
+  
+  const date = fromCalendarDate(value as CalendarDate)
+  if (date) {
+    onUpdate(date)
+    calendarValue.value = value as CalendarDate
+  }
+  isPopoverOpen.value = false
 }
 
-function onStartDateChange(event: Event) {
-  const target = event.target as HTMLInputElement
-  const date = target.value ? new Date(target.value) : null
-  const currentValue = props.modelValue as { start?: any; end?: any } || {}
-  const newValue = { 
-    start: date,
-    end: currentValue.end || null
-  }
-  onUpdate(newValue)
-}
+// Handle range date selection from calendar
+function handleRangeDateSelect(value: DateValue) {
+  console.log('Range date selected:', value, 'for part:', editingRangePart.value)
+  
+  if (!value) return
+  
+  const date = fromCalendarDate(value as CalendarDate)
+  if (!date) return
 
-function onEndDateChange(event: Event) {
-  const target = event.target as HTMLInputElement
-  const date = target.value ? new Date(target.value) : null
-  const currentValue = props.modelValue as { start?: any; end?: any } || {}
-  const newValue = { 
-    start: currentValue.start || null,
-    end: date
+  const currentValue = (props.modelValue as { start?: any; end?: any }) || {}
+  let newValue
+
+  if (editingRangePart.value === 'start') {
+    newValue = {
+      start: date,
+      end: currentValue.end || null
+    }
+    calendarStartValue.value = value as CalendarDate
+    // Switch to editing end date
+    editingRangePart.value = 'end'
+    // Don't close popover yet - wait for end date selection
+  } else {
+    newValue = {
+      start: currentValue.start || null,
+      end: date
+    }
+    calendarEndValue.value = value as CalendarDate
+    
+    // Close popover after both dates are selected
+    if (newValue.start && newValue.end) {
+      // Ensure start is before end
+      if (new Date(newValue.start) > new Date(newValue.end)) {
+        // Swap dates if start is after end
+        const temp = newValue.start
+        newValue.start = newValue.end
+        newValue.end = temp
+      }
+      isPopoverOpen.value = false
+    }
   }
+
   onUpdate(newValue)
 }
 
@@ -192,100 +288,65 @@ function checkMobile() {
   isMobile.value = window.innerWidth < 640
 }
 
-function triggerDatePicker() {
-  if (props.disabled) return
-  
-  // Get the container position
-  const container = containerRef.value
-  if (!container) return
-  
-  const rect = container.getBoundingClientRect()
-  
-  if (!props.range) {
-    // Create a temporary input element to trigger the date picker
-    const tempInput = document.createElement('input')
-    tempInput.type = 'date'
-    tempInput.value = singleDateInputRef.value?.value || ''
-    tempInput.min = singleDateInputRef.value?.min || ''
-    tempInput.max = singleDateInputRef.value?.max || ''
-    
-    // Position it near the container for better UX
-    tempInput.style.position = 'fixed'
-    tempInput.style.top = `${rect.top}px`
-    tempInput.style.left = `${rect.left}px`
-    tempInput.style.width = `${rect.width}px`
-    tempInput.style.height = `${rect.height}px`
-    tempInput.style.opacity = '0'
-    tempInput.style.zIndex = '9999'
-    tempInput.style.pointerEvents = 'none'
-    
-    tempInput.onchange = (e) => {
-      onSingleDateChange(e)
-      cleanupTempInput(tempInput)
-    }
-    
-    tempInput.onblur = () => {
-      setTimeout(() => cleanupTempInput(tempInput), 100)
-    }
-    
-    document.body.appendChild(tempInput)
-    
-    // Focus and trigger the picker
-    setTimeout(() => {
-      tempInput.focus()
-      tempInput.showPicker?.() || tempInput.click()
-    }, 50)
-  } else {
-    // For range, trigger start date picker
-    const tempInput = document.createElement('input')
-    tempInput.type = 'date'
-    tempInput.value = startDateInputRef.value?.value || ''
-    tempInput.min = startDateInputRef.value?.min || ''
-    tempInput.max = startDateInputRef.value?.max || ''
-    
-    // Position it near the start date section
-    tempInput.style.position = 'fixed'
-    tempInput.style.top = `${rect.top}px`
-    tempInput.style.left = `${rect.left}px`
-    tempInput.style.width = `${rect.width / 2}px` // Approximate start section width
-    tempInput.style.height = `${rect.height}px`
-    tempInput.style.opacity = '0'
-    tempInput.style.zIndex = '9999'
-    tempInput.style.pointerEvents = 'none'
-    
-    tempInput.onchange = (e) => {
-      onStartDateChange(e)
-      cleanupTempInput(tempInput)
-    }
-    
-    tempInput.onblur = () => {
-      setTimeout(() => cleanupTempInput(tempInput), 100)
-    }
-    
-    document.body.appendChild(tempInput)
-    
-    // Focus and trigger the picker
-    setTimeout(() => {
-      tempInput.focus()
-      tempInput.showPicker?.() || tempInput.click()
-    }, 50)
-  }
-}
-
 function cleanupTempInput(tempInput: HTMLInputElement) {
   if (document.body.contains(tempInput)) {
     document.body.removeChild(tempInput)
   }
 }
 
+// Add this function back
 function handleResize() {
   checkMobile()
+}
+
+// Open calendar popover for specific range part
+function openCalendarForRange(part: 'start' | 'end') {
+  if (props.disabled) return
+  editingRangePart.value = part
+  isPopoverOpen.value = true
+}
+
+// Get the appropriate calendar value for the current mode
+const currentCalendarValue = computed<CalendarDate | undefined>(() => {
+  if (props.range) {
+    return editingRangePart.value === 'start' 
+      ? calendarStartValue.value 
+      : calendarEndValue.value
+  } else {
+    return calendarValue.value
+  }
+})
+
+// Debug function
+function logCalendarState() {
+  console.log('Calendar state:')
+  console.log('- calendarValue:', calendarValue.value)
+  console.log('- calendarStartValue:', calendarStartValue.value)
+  console.log('- calendarEndValue:', calendarEndValue.value)
+  console.log('- currentCalendarValue:', currentCalendarValue.value)
+  console.log('- isPopoverOpen:', isPopoverOpen.value)
+  console.log('- editingRangePart:', editingRangePart.value)
 }
 
 onMounted(() => {
   checkMobile()
   window.addEventListener('resize', handleResize)
   updateDisplayValues()
+
+  // Initialize calendar value with today's date if no value is set
+  if (!props.range) {
+    if (!calendarValue.value) {
+      calendarValue.value =
+        toCalendarDate(props.modelValue as Date) || today(getLocalTimeZone())
+    }
+  } else {
+    if (!calendarStartValue.value) {
+      calendarStartValue.value = today(getLocalTimeZone())
+    }
+    if (!calendarEndValue.value) {
+      calendarEndValue.value = today(getLocalTimeZone())
+    }
+  }
 })
 
 onUnmounted(() => {
@@ -305,8 +366,16 @@ watch(
   () => {
     // Reset display values when switching between single/range mode
     updateDisplayValues()
+    editingRangePart.value = 'start'
   }
 )
+
+watch(isPopoverOpen, (open) => {
+  if (open) {
+    console.log('Calendar popover opened')
+    logCalendarState()
+  }
+})
 </script>
 
 <template>
@@ -318,12 +387,13 @@ watch(
       { 'range-picker': range, 'mobile-view': isMobile }
     ]"
   >
-    <div 
-      class="date-picker-inner" 
-      :class="{ 
+    <div
+      class="date-picker-inner"
+      :class="{
         'range-inner': range,
-        'disabled-state': disabled 
+        'disabled-state': disabled
       }"
+      @click="!disabled && !range && (isPopoverOpen = true)"
     >
       <!-- Leading Icon Slot -->
       <span
@@ -355,20 +425,7 @@ watch(
           @blur="onBlur"
           @focus="onFocus"
           :aria-label="props.placeholder"
-          @click="triggerDatePicker"
-        />
-        
-        <!-- Hidden native date input -->
-        <input
-          ref="singleDateInputRef"
-          type="date"
-          :value="formatDateForInput(modelValue)"
-          :min="minValue ? formatDateForInput(minValue) : undefined"
-          :max="maxValue ? formatDateForInput(maxValue) : undefined"
-          :disabled="props.disabled"
-          @change="onSingleDateChange"
-          class="hidden-date-input"
-          style="display: none;"
+          @click.stop="!disabled && (isPopoverOpen = true)"
         />
       </div>
 
@@ -385,20 +442,7 @@ watch(
             @blur="onBlur"
             @focus="onFocus"
             aria-label="Start date"
-            @click="triggerDatePicker"
-          />
-          
-          <!-- Hidden native date input for start date -->
-          <input
-            ref="startDateInputRef"
-            type="date"
-            :value="formatDateForInput((modelValue as any)?.start)"
-            :min="minValue ? formatDateForInput(minValue) : undefined"
-            :max="maxValue ? formatDateForInput(maxValue) : undefined"
-            :disabled="props.disabled"
-            @change="onStartDateChange"
-            class="hidden-date-input"
-            style="display: none;"
+            @click.stop="openCalendarForRange('start')"
           />
         </div>
 
@@ -425,62 +469,7 @@ watch(
             @blur="onBlur"
             @focus="onFocus"
             aria-label="End date"
-            @click="() => {
-              // For end date, create a separate trigger
-              if (props.disabled) return
-              const tempInput = document.createElement('input')
-              tempInput.type = 'date'
-              tempInput.value = endDateInputRef.value?.value || ''
-              tempInput.min = endDateInputRef.value?.min || ''
-              tempInput.max = endDateInputRef.value?.max || ''
-              
-              const rect = containerRef.value?.getBoundingClientRect()
-              if (rect) {
-                tempInput.style.position = 'fixed'
-                tempInput.style.top = `${rect.top}px`
-                tempInput.style.left = `${rect.left + rect.width * 0.6}px` // Position near end section
-                tempInput.style.width = `${rect.width * 0.4}px`
-                tempInput.style.height = `${rect.height}px`
-                tempInput.style.opacity = '0'
-                tempInput.style.zIndex = '9999'
-                tempInput.style.pointerEvents = 'none'
-              }
-              
-              tempInput.onchange = (e) => {
-                onEndDateChange(e)
-                if (document.body.contains(tempInput)) {
-                  document.body.removeChild(tempInput)
-                }
-              }
-              
-              tempInput.onblur = () => {
-                setTimeout(() => {
-                  if (document.body.contains(tempInput)) {
-                    document.body.removeChild(tempInput)
-                  }
-                }, 100)
-              }
-              
-              document.body.appendChild(tempInput)
-              
-              setTimeout(() => {
-                tempInput.focus()
-                tempInput.showPicker?.() || tempInput.click()
-              }, 50)
-            }"
-          />
-          
-          <!-- Hidden native date input for end date -->
-          <input
-            ref="endDateInputRef"
-            type="date"
-            :value="formatDateForInput((modelValue as any)?.end)"
-            :min="minValue ? formatDateForInput(minValue) : undefined"
-            :max="maxValue ? formatDateForInput(maxValue) : undefined"
-            :disabled="props.disabled"
-            @change="onEndDateChange"
-            class="hidden-date-input"
-            style="display: none;"
+            @click.stop="openCalendarForRange('end')"
           />
         </div>
       </div>
@@ -512,27 +501,192 @@ watch(
             ]"
             aria-label="Loading"
           />
-          
+
           <!-- Calendar Icon Button -->
-          <button
-            v-else-if="trailingIcon"
-            type="button"
-            :disabled="props.disabled"
-            class="calendar-icon-button"
-            aria-label="Open calendar"
-            @click="triggerDatePicker"
-            @keydown.enter="triggerDatePicker"
-            @keydown.space="triggerDatePicker"
-          >
-            <Icon
-              :name="trailingIcon"
-              :class="[
-                datePickerTheme.trailingIcon({ class: ui?.trailingIcon }),
-                'calendar-icon'
-              ]"
-              aria-hidden="true"
-            />
-          </button>
+          <PopoverRoot v-else-if="trailingIcon" v-model:open="isPopoverOpen">
+            <PopoverTrigger as-child>
+              <button
+                type="button"
+                :disabled="props.disabled"
+                class="calendar-icon-button"
+                :aria-label="
+                  range
+                    ? 'Open calendar for ' + editingRangePart + ' date'
+                    : 'Open calendar'
+                "
+                @click.stop
+              >
+                <Icon
+                  :name="trailingIcon"
+                  :class="[
+                    datePickerTheme.trailingIcon({ class: ui?.trailingIcon }),
+                    'calendar-icon'
+                  ]"
+                  aria-hidden="true"
+                />
+              </button>
+            </PopoverTrigger>
+
+            <PopoverContent
+              side="bottom"
+              align="end"
+              :side-offset="5"
+              class="date-picker-calendar-popover w-auto p-0 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg shadow-lg focus:outline-none"
+              style="z-index: 9999"
+              @pointer-down-outside="isPopoverOpen = false"
+            >
+              <!-- Single Date Calendar -->
+              <div v-if="!range">
+                <CalendarRoot
+                  v-slot="{ grid, weekDays }"
+                  :model-value="calendarValue"
+                  :default-value="calendarValue || today(getLocalTimeZone())"
+                  :placeholder="today(getLocalTimeZone())"
+                  :min-value="toCalendarDate(minValue)"
+                  :max-value="toCalendarDate(maxValue)"
+                  class="p-3"
+                  @update:modelValue="handleSingleDateSelect"
+                >
+                  <CalendarHeader
+                    class="flex items-center justify-between mb-4"
+                  >
+                    <CalendarPrev
+                      class="inline-flex items-center justify-center rounded-md text-sm font-medium p-2 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer disabled:opacity-50 transition-colors"
+                    >
+                      <Icon
+                        name="solar:alt-arrow-left-linear"
+                        class="w-4 h-4"
+                      />
+                    </CalendarPrev>
+                    <CalendarHeading class="font-semibold text-sm" />
+                    <CalendarNext
+                      class="inline-flex items-center justify-center rounded-md text-sm font-medium p-2 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer disabled:opacity-50 transition-colors"
+                    >
+                      <Icon
+                        name="solar:alt-arrow-right-linear"
+                        class="w-4 h-4"
+                      />
+                    </CalendarNext>
+                  </CalendarHeader>
+
+                  <CalendarGrid
+                    v-for="(month, monthIndex) in grid"
+                    :key="`month-${monthIndex}`"
+                    class="w-full"
+                  >
+                    <CalendarGridHead>
+                      <CalendarGridRow class="flex mb-1">
+                        <CalendarHeadCell
+                          v-for="day in weekDays"
+                          :key="day"
+                          class="text-gray-500 w-9 font-normal text-xs flex items-center justify-center py-2"
+                        >
+                          {{ day }}
+                        </CalendarHeadCell>
+                      </CalendarGridRow>
+                    </CalendarGridHead>
+                    <CalendarGridBody>
+                      <CalendarGridRow
+                        v-for="(weekDates, weekIndex) in month.rows"
+                        :key="`week-${weekIndex}`"
+                        class="flex w-full"
+                      >
+                        <CalendarCell
+                          v-for="(weekDate, dayIndex) in weekDates"
+                          :key="`day-${weekIndex}-${dayIndex}`"
+                          :date="weekDate"
+                          class="relative p-0 text-center text-sm"
+                        >
+                          <CalendarCellTrigger
+                            :day="weekDate"
+                            :month="month.value"
+                            class="inline-flex items-center justify-center rounded-md text-sm font-normal h-9 w-9 p-0 m-0.5 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:pointer-events-none disabled:opacity-50 data-[selected]:bg-primary data-[selected]:text-white data-[today]:border data-[today]:border-primary data-[outside-view]:text-gray-400 data-[outside-view]:opacity-40 cursor-pointer transition-colors"
+                          />
+                        </CalendarCell>
+                      </CalendarGridRow>
+                    </CalendarGridBody>
+                  </CalendarGrid>
+                </CalendarRoot>
+              </div>
+
+              <!-- Range Date Calendar -->
+              <div v-else>
+                <CalendarRoot
+                  v-slot="{ grid, weekDays }"
+                  :model-value="currentCalendarValue"
+                  :default-value="currentCalendarValue || today(getLocalTimeZone())"
+                  :placeholder="today(getLocalTimeZone())"
+                  :min-value="toCalendarDate(minValue)"
+                  :max-value="toCalendarDate(maxValue)"
+                  class="p-3"
+                  @update:modelValue="handleRangeDateSelect"
+                >
+                  <div class="mb-3 text-sm font-medium text-center">
+                    Select {{ editingRangePart }} date
+                  </div>
+                  <CalendarHeader
+                    class="flex items-center justify-between mb-4"
+                  >
+                    <CalendarPrev
+                      class="inline-flex items-center justify-center rounded-md text-sm font-medium p-2 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer disabled:opacity-50 transition-colors"
+                    >
+                      <Icon
+                        name="solar:alt-arrow-left-linear"
+                        class="w-4 h-4"
+                      />
+                    </CalendarPrev>
+                    <CalendarHeading class="font-semibold text-sm" />
+                    <CalendarNext
+                      class="inline-flex items-center justify-center rounded-md text-sm font-medium p-2 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer disabled:opacity-50 transition-colors"
+                    >
+                      <Icon
+                        name="solar:alt-arrow-right-linear"
+                        class="w-4 h-4"
+                      />
+                    </CalendarNext>
+                  </CalendarHeader>
+
+                  <CalendarGrid
+                    v-for="(month, monthIndex) in grid"
+                    :key="`month-${monthIndex}`"
+                    class="w-full"
+                  >
+                    <CalendarGridHead>
+                      <CalendarGridRow class="flex mb-1">
+                        <CalendarHeadCell
+                          v-for="day in weekDays"
+                          :key="day"
+                          class="text-gray-500 w-9 font-normal text-xs flex items-center justify-center py-2"
+                        >
+                          {{ day }}
+                        </CalendarHeadCell>
+                      </CalendarGridRow>
+                    </CalendarGridHead>
+                    <CalendarGridBody>
+                      <CalendarGridRow
+                        v-for="(weekDates, weekIndex) in month.rows"
+                        :key="`week-${weekIndex}`"
+                        class="flex w-full"
+                      >
+                        <CalendarCell
+                          v-for="(weekDate, dayIndex) in weekDates"
+                          :key="`day-${weekIndex}-${dayIndex}`"
+                          :date="weekDate"
+                          class="relative p-0 text-center text-sm"
+                        >
+                          <CalendarCellTrigger
+                            :day="weekDate"
+                            :month="month.value"
+                            class="inline-flex items-center justify-center rounded-md text-sm font-normal h-9 w-9 p-0 m-0.5 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:pointer-events-none disabled:opacity-50 data-[selected]:bg-primary data-[selected]:text-white data-[today]:border data-[today]:border-primary data-[outside-view]:text-gray-400 data-[outside-view]:opacity-40 cursor-pointer transition-colors"
+                          />
+                        </CalendarCell>
+                      </CalendarGridRow>
+                    </CalendarGridBody>
+                  </CalendarGrid>
+                </CalendarRoot>
+              </div>
+            </PopoverContent>
+          </PopoverRoot>
         </slot>
       </span>
     </div>
@@ -634,6 +788,7 @@ watch(
   color: hsl(var(--muted-foreground));
   border-radius: 0.25rem;
   user-select: none;
+  outline: none;
 }
 
 .calendar-icon-button:hover:not(:disabled) {
@@ -648,6 +803,11 @@ watch(
 
 .calendar-icon-button:not(:disabled):active {
   transform: scale(0.95);
+}
+
+.calendar-icon-button:focus-visible {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: 2px;
 }
 
 .calendar-icon {
@@ -731,7 +891,7 @@ watch(
   .date-picker-inner:not(.range-inner) {
     padding: 0.5rem;
   }
-  
+
   .date-picker-inner {
     min-height: 2.75rem;
   }
@@ -749,17 +909,6 @@ watch(
   to {
     transform: rotate(360deg);
   }
-}
-
-/* Hidden date inputs */
-.hidden-date-input {
-  display: none !important;
-}
-
-/* Focus state for inputs */
-.segments-wrapper input:focus:not(:disabled),
-.range-section input:focus:not(:disabled) {
-  outline: none;
 }
 
 /* Improve clickable area */
@@ -789,16 +938,40 @@ watch(
   .date-picker-inner {
     min-height: 3rem;
   }
-  
+
   .calendar-icon-button {
     min-width: 2.5rem;
     min-height: 2.5rem;
     padding: 0.375rem;
   }
-  
+
   .calendar-icon {
     width: 1.5rem;
     height: 1.5rem;
   }
+}
+
+/* Calendar popover styles */
+.date-picker-calendar-popover {
+  animation: fadeIn 0.2s ease-out;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+</style>
+
+<style>
+/* Global style to ensure popover is on top */
+.date-picker-calendar-popover {
+  z-index: 9999 !important;
 }
 </style>

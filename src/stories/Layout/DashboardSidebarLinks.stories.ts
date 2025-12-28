@@ -5,8 +5,28 @@ import Button from '@/components/Button.vue'
 import Avatar from '@/components/Avatar.vue'
 import Separator from '@/components/Separator.vue'
 import { ref } from 'vue'
-import type { DashboardSidebarLinkItem } from '@/components/DashboardSidebarLinks.vue'
-
+// import type { DashboardSidebarLinkItem } from '../../components/DashboardSidebarLinks.vue'
+interface DashboardSidebarLinkItem {
+  label: string
+  to?: string
+  href?: string
+  icon?: string
+  badge?:
+    | string
+    | number
+    | {
+        label?: string
+        color?: 'primary' | 'success' | 'warning' | 'error' | 'info' | 'neutral'
+        variant?: 'soft' | 'strong'
+      }
+  active?: boolean
+  disabled?: boolean
+  tooltip?: boolean | string
+  children?: Omit<DashboardSidebarLinkItem, 'children'>[]
+  defaultOpen?: boolean
+  onClick?: (e: Event) => void
+  class?: string
+}
 const meta = {
   title: 'Layout/DashboardSidebar',
   component: DashboardSidebar,
@@ -102,15 +122,15 @@ export const WithNavigation: Story = {
     template: `
       <div class="flex h-screen">
         <DashboardSidebar>
-          <template #header>
-            <div class="flex items-center gap-3 w-full">
-              <Avatar size="sm" src="https://github.com/nuxt.png" />
-              <div class="flex-1 min-w-0">
-                <p class="text-sm font-medium truncate">John Doe</p>
-                <p class="text-xs text-muted-foreground truncate">Admin</p>
-              </div>
-            </div>
-          </template>
+       <template #header>
+  <div class="flex items-center gap-3 w-full overflow-hidden">
+    <Avatar size="sm" src="https://github.com/nuxt.png" class="shrink-0 w-8 h-8" />
+    <div class="flex-1 min-w-0">
+      <p class="text-sm font-medium truncate">John Doe</p>
+      <p class="text-xs text-muted-foreground truncate">Admin</p>
+    </div>
+  </div>
+</template>
           
           <DashboardSidebarLinks :links="links" />
           
@@ -226,15 +246,15 @@ export const WithActiveSubmenu: Story = {
     template: `
       <div class="flex h-screen">
         <DashboardSidebar>
-          <template #header>
-            <div class="flex items-center gap-3 w-full">
-              <Avatar size="sm" src="https://github.com/nuxt.png" />
-              <div class="flex-1 min-w-0">
-                <p class="text-sm font-medium truncate">John Doe</p>
-                <p class="text-xs text-muted-foreground truncate">Admin</p>
-              </div>
-            </div>
-          </template>
+        <template #header>
+  <div class="flex items-center gap-3 w-full overflow-hidden">
+    <Avatar size="sm" src="https://github.com/nuxt.png" class="shrink-0 w-8 h-8" />
+    <div class="flex-1 min-w-0">
+      <p class="text-sm font-medium truncate">John Doe</p>
+      <p class="text-xs text-muted-foreground truncate">Admin</p>
+    </div>
+  </div>
+</template>
           
           <div class="space-y-4">
             <div>
