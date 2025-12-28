@@ -3,7 +3,7 @@ import DashboardSidebar from '@/components/DashboardSidebar.vue'
 import DashboardSidebarLinks from '@/components/DashboardSidebarLinks.vue'
 import Button from '@/components/Button.vue'
 import Avatar from '@/components/Avatar.vue'
-import Separator from '@/components/Separator.vue'
+// import Separator from '@/components/Separator.vue'
 import { ref } from 'vue'
 
 const meta = {
@@ -108,10 +108,8 @@ export const Default: Story = {
       <div class="flex h-[600px] border rounded-lg overflow-hidden relative">
         <DashboardSidebar :links="links">
           <template #header="{ collapsed }">
-            <div class="flex items-center gap-3 w-full overflow-hidden min-h-[64px]">
-              <!-- Use proper avatar size -->
-             
-               <Avatar size="sm" src="https://github.com/nuxt.png" />
+          <div class="flex items-center gap-3 overflow-hidden">
+<Avatar size="sm" src="https://github.com/nuxt.png" class="shrink-0 max-w-7 max-h-7" />
               
               <div v-if="!collapsed" class="flex-1 min-w-0">
                 <p class="text-sm font-medium truncate">John Doe</p>
@@ -149,7 +147,7 @@ export const MobileResponsive: Story = {
       return { mobileOpen, links }
     },
     template: `
-      <div class="relative h-[600px] border rounded-lg overflow-hidden">
+      <div class="relative h-150 border rounded-lg overflow-hidden">
         <!-- Mobile toggle button -->
         <div class="absolute top-4 left-4 z-50 md:hidden">
           <Button 
@@ -167,8 +165,8 @@ export const MobileResponsive: Story = {
             :links="links"
           >
             <template #header>
-              <div class="flex items-center gap-3 w-full overflow-hidden min-h-[64px]">
-               <Avatar size="sm" src="https://github.com/nuxt.png" />
+              <div class="flex items-center gap-3 overflow-hidden">
+  <Avatar size="sm" src="https://github.com/nuxt.png" class="shrink-0" />
                 <div class="flex-1 min-w-0">
                   <p class="text-sm font-medium truncate">John Doe</p>
                   <p class="text-xs text-muted-foreground truncate">Admin</p>
