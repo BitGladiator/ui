@@ -1,4 +1,5 @@
 import type { Preview } from '@storybook/vue3-vite'
+import '../src/style.css' // Add this line - adjust path if your CSS file is elsewhere
 
 const preview: Preview = {
   parameters: {

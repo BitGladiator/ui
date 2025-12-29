@@ -107,16 +107,21 @@ export const Default: Story = {
     template: `
       <div class="flex h-[600px] border rounded-lg overflow-hidden relative">
         <DashboardSidebar :links="links">
-          <template #header="{ collapsed }">
-          <div class="flex items-center gap-3 overflow-hidden">
-<Avatar size="sm" src="https://github.com/nuxt.png" class="!w-7 !h-7 shrink-0" />
-              
-              <div v-if="!collapsed" class="flex-1 min-w-0">
-                <p class="text-sm font-medium truncate">John Doe</p>
-                <p class="text-xs text-muted-foreground truncate">Admin</p>
-              </div>
-            </div>
-          </template>
+   <template #header="{ collapsed }">
+  <div class="flex items-center gap-3 overflow-hidden">
+    <div class="w-8 h-8 shrink-0">
+      <Avatar
+        src="https://github.com/nuxt.png"
+        class="w-full h-full"
+      />
+    </div>
+
+    <div v-if="!collapsed" class="flex-1 min-w-0">
+      <p class="text-sm font-medium truncate">John Doe</p>
+      <p class="text-xs text-muted-foreground truncate">Admin</p>
+    </div>
+  </div>
+</template>
           
           <template #footer>
             <Button variant="tertiary" size="sm" class="w-full" :leading-icon="'solar:logout-bold'">
@@ -143,7 +148,7 @@ export const MobileResponsive: Story = {
     setup() {
       const mobileOpen = ref(false)
       const links = ref(navigationLinks)
-      
+
       return { mobileOpen, links }
     },
     template: `
@@ -164,16 +169,21 @@ export const MobileResponsive: Story = {
             v-model:mobile-open="mobileOpen"
             :links="links"
           >
-            <template #header>
-              <div class="flex items-center gap-3 overflow-hidden">
-<Avatar size="sm" src="https://github.com/nuxt.png" class="!w-7 !h-7 shrink-0" />
-                <div class="flex-1 min-w-0">
-                  <p class="text-sm font-medium truncate">John Doe</p>
-                  <p class="text-xs text-muted-foreground truncate">Admin</p>
-                </div>
-              </div>
+        <template #header="{ collapsed }">
+  <div class="flex items-center gap-3 overflow-hidden">
+    <div class="w-8 h-8 shrink-0">
+      <Avatar
+        src="https://github.com/nuxt.png"
+        class="w-full h-full"
+      />
+    </div>
 
-            </template>
+    <div v-if="!collapsed" class="flex-1 min-w-0">
+      <p class="text-sm font-medium truncate">John Doe</p>
+      <p class="text-xs text-muted-foreground truncate">Admin</p>
+    </div>
+  </div>
+</template>
             
             <template #footer>
               <Button variant="tertiary" size="sm" class="w-full" :leading-icon="'solar:logout-bold'">
